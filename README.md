@@ -15,3 +15,9 @@ Run `npx hardhat compile` to create artifacts.
 ### npx hardhat test
 
 Run `npx hardhat test` to execute tests scripts.
+
+## Test Results
+
+The following image shows the test results.
+
+![test output](./test-output.png)
