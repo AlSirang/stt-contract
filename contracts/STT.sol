@@ -11,19 +11,18 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
     using Strings for uint256;
 
     uint16 public constant maxSupply = 10000;
+    uint16 public reserve = 512; // tokens reserve for the owner
+
+    uint16 private _totalSupplyPublic; // number of tokens minted from public supply
+    uint16 private publicSupply = maxSupply - reserve; // tokens avaiable for public to mint
+    uint16 private royalties = 690; // royalties 6.9% in bps
+
+    uint256 public mintPrice = 0.069 ether; // mint price per token
+    uint16 public mintLimit = 1; // initially, only 1 tokens per address are allowd to mint.
+    address public royaltiesReceiver; // EOA for as royalties receiver for collection
 
     bool public isMintingOpen;
     string public baseURI;
-    address private royaltiesReceiver;
-
-    uint256 public mintPrice = 0.069 ether; // mint price per token
-    uint16 private reserve = 512; // tokens reserve for the owner
-    uint16 private publicSupply = maxSupply - reserve; // tokens avaiable for public to mint
-
-    uint16 public mintLimit = 1; // initially, only 1 tokens per address are allowd to mint.
-    uint16 private royalties = 690; // royalties 6.9% in bps
-
-    uint16 private _totalSupplyPublic; // number of tokens minted from public supply
 
     /***************************************************/
     /******************** MODIFIERS ********************/
@@ -35,9 +34,9 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
         require(msg.value >= mintPrice * volume, "low price!");
 
         uint16 newTotalSupplyPublic = _totalSupplyPublic + volume;
-        require(newTotalSupply <= publicSupply, "maxsupply exceeded");
+        require(newTotalSupplyPublic <= publicSupply, "maxsupply exceeded");
 
-        uint16 _newBalanceOf = balanceOf(_msgSender()) + volume;
+        uint256 _newBalanceOf = balanceOf(_msgSender()) + volume;
         require(_newBalanceOf <= mintLimit, "mint limit exceeded");
 
         _totalSupplyPublic = newTotalSupplyPublic;
