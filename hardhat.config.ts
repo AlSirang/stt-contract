@@ -10,7 +10,7 @@ import "solidity-coverage";
 dotenv.config();
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.10",
+  solidity: "0.8.12",
   paths: { tests: "tests" },
 
   networks: {
