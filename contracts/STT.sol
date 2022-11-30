@@ -7,21 +7,25 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
+    /***************************************************/
+    /*********** SCANDINAVIAN TRAILER TRASH ************/
+    /***************************************************/
+
 contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
     using Strings for uint256;
 
-    uint16 public constant maxSupply = 10000;
-    uint16 public reserve = 512; // tokens reserve for the owner
+    uint16 public constant maxTrashSupply = 10000;
+    uint16 public reserveTrash = 512; // tokens reserve for the owner
 
-    uint16 private _totalSupplyPublic; // number of tokens minted from public supply
-    uint16 private publicSupply = maxSupply - reserve; // tokens avaiable for public to mint
-    uint16 private royalties = 690; // royalties 6.9% in bps
+    uint16 private _totalTrashSupplyPublic; // number of tokens minted from public supply
+    uint16 private publicTrashSupply = maxTrashSupply - reserveTrash; // tokens avaiable for public to mint
+    uint16 private trashTax = 690; // royalties 6.9% in bps
 
-    uint256 public mintPrice = 0.069 ether; // mint price per token
-    uint16 public mintLimit = 1; // initially, only 1 tokens per address are allowd to mint.
-    address public royaltiesReceiver; // EOA for as royalties receiver for collection
+    uint256 public spawnPrice = 0.069 ether; // mint price per token
+    uint16 public spawnLimit = 1; // initially, only 1 tokens per address are allowd to mint.
+    address public trashTaxCollector; // EOA for as royalties receiver for collection
 
-    bool public isMintingOpen;
+    bool public isSpawning;
     string public baseURI;
 
     /***************************************************/
@@ -29,17 +33,17 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
     /***************************************************/
 
     modifier mintRequirements(uint16 volume) {
-        require(volume > 0, "tokens gt 0");
+        require(volume > 0, "Tokens gt 0");
 
-        require(msg.value >= mintPrice * volume, "low price!");
+        require(msg.value >= spawnPrice * volume, "Low price!");
 
-        uint16 newTotalSupplyPublic = _totalSupplyPublic + volume;
-        require(newTotalSupplyPublic <= publicSupply, "maxsupply exceeded");
+        uint16 newTotalTrashSupplyPublic = _totalTrashSupplyPublic + volume;
+        require(newTotalTrashSupplyPublic <= publicTrashSupply, "Max supply exceeded!");
 
         uint256 _newBalanceOf = balanceOf(_msgSender()) + volume;
-        require(_newBalanceOf <= mintLimit, "mint limit exceeded");
+        require(_newBalanceOf <= spawnLimit, "Spawn limit exceeded!");
 
-        _totalSupplyPublic = newTotalSupplyPublic;
+        _totalTrashSupplyPublic = newTotalTrashSupplyPublic;
         _;
     }
 
@@ -48,7 +52,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      * @param volume is the quantity of tokens to be minted
      */
     function mint(uint16 volume) external payable mintRequirements(volume) {
-        require(isMintingOpen, "mint isn't open");
+        require(isSpawning, "Spawning has not yet started!");
         __mint(_msgSender(), volume);
     }
 
@@ -58,9 +62,9 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      * @param volume is the quantity of tokens to be minted
      */
     function mintFromReserve(address to, uint16 volume) external onlyOwner {
-        require(volume <= reserve, "reserve exceeded");
+        require(volume <= reserveTrash, "Trash reserve exceeded!");
 
-        reserve -= volume;
+        reserveTrash -= volume;
         __mint(to, volume);
     }
 
@@ -81,23 +85,23 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      * @dev it is only callable by Contract owner. it will toggle public minting status
      */
     function toggleMintingStatus() external onlyOwner {
-        isMintingOpen = !isMintingOpen;
+        isSpawning = !isSpawning;
     }
 
     /**
      * @dev it will update mint price
-     * @param _mintPrice is new value for mint
+     * @param _spawnPrice is new value for mint
      */
-    function setMintPrice(uint256 _mintPrice) external onlyOwner {
-        mintPrice = _mintPrice;
+    function setMintPrice(uint256 _spawnPrice) external onlyOwner {
+        spawnPrice = _spawnPrice;
     }
 
     /**
      * @dev it will update the mint limit aka amount of nfts a wallet can hold
-     * @param _mintLimit is new value for the limit
+     * @param _spawnLimit is new value for the limit
      */
-    function setMintLimit(uint16 _mintLimit) external onlyOwner {
-        mintLimit = _mintLimit;
+    function setMintLimit(uint16 _spawnLimit) external onlyOwner {
+        spawnLimit = _spawnLimit;
     }
 
     /**
@@ -110,24 +114,24 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
 
     /**
      * @dev it will update the address for royalties receiver
-     * @param _royaltiesReceiver is new royalty receiver
+     * @param _trashTaxCollector is new royalty receiver
      */
-    function setRoyaltiesReceiver(address _royaltiesReceiver)
+    function setRoyaltiesReceiver(address _trashTaxCollector)
         external
         onlyOwner
     {
-        require(_royaltiesReceiver != address(0));
-        royaltiesReceiver = _royaltiesReceiver;
+        require(_trashTaxCollector != address(0));
+        trashTaxCollector = _trashTaxCollector;
     }
 
     /**
      * @dev it will update the royalties for token
-     * @param _royalties is new percentage of royalties. it should be more than 0 and least 90
+     * @param _trashTax is new percentage of royalties. it should be more than 0 and least 90
      */
-    function setRoyalties(uint16 _royalties) external onlyOwner {
-        require(_royalties > 0, "should be > 0");
+    function setRoyalties(uint16 _trashTax) external onlyOwner {
+        require(_trashTax > 0, "should be > 0");
 
-        royalties = (_royalties * 100); // convert percentage into bps
+        trashTax = (_trashTax * 100); // convert percentage into bps
     }
 
     /**
@@ -135,7 +139,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      */
     function withdraw() external onlyOwner {
         bool success = payable(msg.sender).send(address(this).balance);
-        require(success, "transfer failed");
+        require(success, "Transfer failed!");
     }
 
     /********************************************************/
@@ -194,13 +198,13 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
             _exists(_tokenId),
             "ERC2981RoyaltyStandard: Royalty info for nonexistent token"
         );
-        return (royaltiesReceiver, (_salePrice * royalties) / 10000);
+        return (trashTaxCollector, (_salePrice * trashTax) / 10000);
     }
 
     constructor(string memory _uri)
-        ERC721A("Scandinavian trailer trash", "Trash")
+        ERC721A("Scandinavian Trailer Trash", "Trash")
     {
         baseURI = _uri;
-        royaltiesReceiver = msg.sender;
+        trashTaxCollector = msg.sender;
     }
 }
