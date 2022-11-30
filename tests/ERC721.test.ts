@@ -13,8 +13,8 @@ describe("ScandinavianTrailerTrash", async function () {
   const BASE_URI = "http://dummy.url/";
   const TOKEN_URI = `${BASE_URI}0.json`;
 
-  const NAME = "Scandinavian trailer trash";
-  const SYMBOL = "Trash";
+  const NAME = "Scandinavian Trailer Trash";
+  const SYMBOL = "TRASH";
   const MAX_SUPPLY = 10000;
   const RESERVED_TOKENS = 512;
   const PUBLIC_SUPPLY = MAX_SUPPLY - RESERVED_TOKENS;
@@ -68,7 +68,7 @@ describe("ScandinavianTrailerTrash", async function () {
     let receipt: any;
 
     beforeEach(async () => {
-      mintPrice = await nft.mintPrice();
+      mintPrice = await nft.spawnPrice();
       const value = mintPrice.mul(tokens);
       receipt = await nft.connect(minter).mint(tokens, {
         value,
@@ -76,7 +76,7 @@ describe("ScandinavianTrailerTrash", async function () {
     });
 
     it("total supply", async () => {
-      expect(await nft.totalSupply()).to.eq(tokens);
+      expect(await nft.totalTrashSupply()).to.eq(tokens);
     });
 
     it("BASE + TOKEN URI", async () => {
@@ -104,8 +104,8 @@ describe("ScandinavianTrailerTrash", async function () {
     });
 
     it("mint limit exceeded", async () => {
-      const mintLimit = await nft.mintLimit();
-      const mintPrice = await nft.mintPrice();
+      const mintLimit = await nft.spawnLimit();
+      const mintPrice = await nft.spawnPrice();
       const volume = mintLimit + 1;
 
       await expect(
@@ -117,7 +117,7 @@ describe("ScandinavianTrailerTrash", async function () {
 
     it("low price", async () => {
       const volume = 3;
-      const mintPrice = await nft.mintPrice();
+      const mintPrice = await nft.spawnPrice();
 
       await expect(
         nft.mint(volume, {
@@ -129,22 +129,22 @@ describe("ScandinavianTrailerTrash", async function () {
 
   /***** test case 3 ******/
   describe("deploy contract, mint from reserve", function () {
-    const toknesMinted = 10;
+    const tokensMinted = 10;
     let receipt: any;
     beforeEach(async () => {
-      receipt = await nft.mintFromReserve(accountX.address, toknesMinted);
+      receipt = await nft.mintFromReserve(accountX.address, tokensMinted);
     });
 
     it("balance", async () => {
-      expect(await nft.balanceOf(accountX.address)).to.eq(toknesMinted);
+      expect(await nft.balanceOf(accountX.address)).to.eq(tokensMinted);
     });
 
     it("should decrease reserve", async () => {
-      expect(await nft.reserve()).to.eq(RESERVED_TOKENS - toknesMinted);
+      expect(await nft.reserve()).to.eq(RESERVED_TOKENS - tokensMinted);
     });
 
     it("total supply", async () => {
-      expect(await nft.totalSupply()).to.eq(toknesMinted);
+      expect(await nft.totalTrashSupply()).to.eq(tokensMinted);
     });
   });
 
@@ -153,7 +153,7 @@ describe("ScandinavianTrailerTrash", async function () {
     let mintPriceWei: BigNumberish;
 
     beforeEach(async () => {
-      const mintPrice = await nft.mintPrice();
+      const mintPrice = await nft.spawnPrice();
       mintPriceWei = mintPrice.mul(1);
     });
 
@@ -231,7 +231,7 @@ describe("ScandinavianTrailerTrash", async function () {
       await nft.mint(PUBLIC_SUPPLY);
     });
     it("total supply should be equal to max supply", async () => {
-      expect(await nft.totalSupply()).to.eq(PUBLIC_SUPPLY);
+      expect(await nft.totalTrashSupply()).to.eq(PUBLIC_SUPPLY);
     });
     it("balace of caller should be equal to max supply", async () => {
       expect(await nft.balanceOf(deployer.address)).to.eq(PUBLIC_SUPPLY);
@@ -250,7 +250,7 @@ describe("ScandinavianTrailerTrash", async function () {
   describe("deploy contract, mint and test withdraw:", async () => {
     beforeEach(async () => {
       await nft.setMintLimit(10);
-      const mintPrice = await nft.mintPrice();
+      const mintPrice = await nft.spawnPrice();
       const volume = 5;
       // minting first token, id 0
       await nft.mint(volume, {
@@ -324,7 +324,7 @@ describe("ScandinavianTrailerTrash", async function () {
       });
 
       it("total supply should be 10000", async () => {
-        expect(await nft.totalSupply()).to.be.eq(MAX_SUPPLY);
+        expect(await nft.totalTrashSupply()).to.be.eq(MAX_SUPPLY);
       });
     });
   });
