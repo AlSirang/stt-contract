@@ -7,9 +7,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-    /***************************************************/
-    /*********** SCANDINAVIAN TRAILER TRASH ************/
-    /***************************************************/
+//  ╔═╗╔═╗╔═╗╔╗╔╔╦╗╦╔╗╔╔═╗╦  ╦╦╔═╗╔╗╔  ╔╦╗╦═╗╔═╗╦╦  ╔═╗╦═╗  ╔╦╗╦═╗╔═╗╔═╗╦ ╦
+//  ╚═╗║  ╠═╣║║║ ║║║║║║╠═╣╚╗╔╝║╠═╣║║║   ║ ╠╦╝╠═╣║║  ║╣ ╠╦╝   ║ ╠╦╝╠═╣╚═╗╠═╣
+//  ╚═╝╚═╝╩ ╩╝╚╝═╩╝╩╝╚╝╩ ╩ ╚╝ ╩╩ ╩╝╚╝   ╩ ╩╚═╩ ╩╩╩═╝╚═╝╩╚═   ╩ ╩╚═╩ ╩╚═╝╩ ╩
 
 contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
     using Strings for uint256;
@@ -38,7 +38,10 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
         require(msg.value >= spawnPrice * volume, "Low price!");
 
         uint16 newTotalTrashSupplyPublic = _totalTrashSupplyPublic + volume;
-        require(newTotalTrashSupplyPublic <= publicTrashSupply, "Max supply exceeded!");
+        require(
+            newTotalTrashSupplyPublic <= publicTrashSupply,
+            "Max supply exceeded!"
+        );
 
         uint256 _newBalanceOf = balanceOf(_msgSender()) + volume;
         require(_newBalanceOf <= spawnLimit, "Spawn limit exceeded!");
