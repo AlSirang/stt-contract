@@ -35,7 +35,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
     modifier spawnRequirements(uint16 volume) {
         require(volume > 0, "Tokens gt 0");
 
-        require(msg.value >= spawnPrice * volume, "Low price!");
+        require(msg.value >= (spawnPrice * volume), "Low price!");
 
         uint16 newTotalTrashSupplyPublic = _totalTrashSupplyPublic + volume;
         require(
@@ -54,7 +54,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      * @dev  It will mint from tokens allocated for public
      * @param volume is the quantity of tokens to be minted
      */
-    function spawn(uint16 volume) external payable mintRequirements(volume) {
+    function spawn(uint16 volume) external payable spawnRequirements(volume) {
         require(isSpawning, "Spawning has not yet started!");
         __mint(_msgSender(), volume);
     }
@@ -191,7 +191,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      *  @param _tokenId is valid token number
      *  @param _salePrice is amount for which token will be traded
      */
-    function trashTaxInfo(uint256 _tokenId, uint256 _salePrice)
+    function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
         external
         view
         override
