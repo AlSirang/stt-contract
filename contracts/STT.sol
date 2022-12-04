@@ -32,7 +32,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
     /******************** MODIFIERS ********************/
     /***************************************************/
 
-    modifier mintRequirements(uint16 volume) {
+    modifier spawnRequirements(uint16 volume) {
         require(volume > 0, "Tokens gt 0");
 
         require(msg.value >= spawnPrice * volume, "Low price!");
@@ -54,7 +54,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      * @dev  It will mint from tokens allocated for public
      * @param volume is the quantity of tokens to be minted
      */
-    function mint(uint16 volume) external payable mintRequirements(volume) {
+    function spawn(uint16 volume) external payable mintRequirements(volume) {
         require(isSpawning, "Spawning has not yet started!");
         __mint(_msgSender(), volume);
     }
@@ -64,7 +64,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      * @param to is the address to which the tokens will be minted
      * @param volume is the quantity of tokens to be minted
      */
-    function mintFromReserve(address to, uint16 volume) external onlyOwner {
+    function spawnFromReserve(address to, uint16 volume) external onlyOwner {
         require(volume <= reserveTrash, "Trash reserve exceeded!");
 
         reserveTrash -= volume;
@@ -87,7 +87,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
     /**
      * @dev it is only callable by Contract owner. it will toggle public minting status
      */
-    function toggleMintingStatus() external onlyOwner {
+    function toggleSpawningStatus() external onlyOwner {
         isSpawning = !isSpawning;
     }
 
@@ -95,7 +95,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      * @dev it will update mint price
      * @param _spawnPrice is new value for mint
      */
-    function setMintPrice(uint256 _spawnPrice) external onlyOwner {
+    function setSpawnPrice(uint256 _spawnPrice) external onlyOwner {
         spawnPrice = _spawnPrice;
     }
 
@@ -103,7 +103,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      * @dev it will update the mint limit aka amount of nfts a wallet can hold
      * @param _spawnLimit is new value for the limit
      */
-    function setMintLimit(uint16 _spawnLimit) external onlyOwner {
+    function setSpawnLimit(uint16 _spawnLimit) external onlyOwner {
         spawnLimit = _spawnLimit;
     }
 
@@ -119,7 +119,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      * @dev it will update the address for royalties receiver
      * @param _trashTaxCollector is new royalty receiver
      */
-    function setRoyaltiesReceiver(address _trashTaxCollector)
+    function setTrashTaxReceiver(address _trashTaxCollector)
         external
         onlyOwner
     {
@@ -131,7 +131,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      * @dev it will update the royalties for token
      * @param _trashTax is new percentage of royalties. it should be more than 0 and least 90
      */
-    function setRoyalties(uint16 _trashTax) external onlyOwner {
+    function setTrashTax(uint16 _trashTax) external onlyOwner {
         require(_trashTax > 0, "should be > 0");
 
         trashTax = (_trashTax * 100); // convert percentage into bps
@@ -191,7 +191,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      *  @param _tokenId is valid token number
      *  @param _salePrice is amount for which token will be traded
      */
-    function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
+    function trashTaxInfo(uint256 _tokenId, uint256 _salePrice)
         external
         view
         override
