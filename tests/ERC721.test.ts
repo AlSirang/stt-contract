@@ -13,7 +13,7 @@ describe("ScandinavianTrailerTrash", async function () {
   const BASE_URI = "http://dummy.url/";
   const TOKEN_URI = `${BASE_URI}0.json`;
 
-  const NAME = "Scandinavian trailer trash";
+  const NAME = "Scandinavian Trailer Trash";
   const SYMBOL = "Trash";
   const MAX_SUPPLY = 10000;
   const RESERVED_TOKENS = 512;
@@ -40,7 +40,7 @@ describe("ScandinavianTrailerTrash", async function () {
     );
     nft = await scandinavianTrailerTrash.deploy(BASE_URI);
 
-    await nft.toggleMintingStatus();
+    await nft.toggleSpawningStatus();
   });
 
   /***** test case 1 ******/
@@ -57,7 +57,7 @@ describe("ScandinavianTrailerTrash", async function () {
     });
 
     it("max supply", async () => {
-      expect(await nft.maxSupply()).to.eq(MAX_SUPPLY);
+      expect(await nft.maxTrashSupply()).to.eq(MAX_SUPPLY);
     });
   });
 
@@ -68,9 +68,9 @@ describe("ScandinavianTrailerTrash", async function () {
     let receipt: any;
 
     beforeEach(async () => {
-      mintPrice = await nft.mintPrice();
+      mintPrice = await nft.spawnPrice();
       const value = mintPrice.mul(tokens);
-      receipt = await nft.connect(minter).mint(tokens, {
+      receipt = await nft.connect(minter).spawn(tokens, {
         value,
       });
     });
@@ -104,12 +104,12 @@ describe("ScandinavianTrailerTrash", async function () {
     });
 
     it("mint limit exceeded", async () => {
-      const mintLimit = await nft.mintLimit();
-      const mintPrice = await nft.mintPrice();
+      const mintLimit = await nft.spawnLimit();
+      const mintPrice = await nft.spawnPrice();
       const volume = mintLimit + 1;
 
       await expect(
-        nft.mint(volume, {
+        nft.spawn(volume, {
           value: mintPrice.mul(volume),
         })
       ).reverted;
@@ -117,11 +117,11 @@ describe("ScandinavianTrailerTrash", async function () {
 
     it("low price", async () => {
       const volume = 3;
-      const mintPrice = await nft.mintPrice();
+      const mintPrice = await nft.spawnPrice();
 
       await expect(
-        nft.mint(volume, {
-          value: mintPrice.mul(2),
+        nft.spawn(volume, {
+          value: mintPrice.mul(volume - 1),
         })
       ).reverted;
     });
@@ -132,7 +132,7 @@ describe("ScandinavianTrailerTrash", async function () {
     const toknesMinted = 10;
     let receipt: any;
     beforeEach(async () => {
-      receipt = await nft.mintFromReserve(accountX.address, toknesMinted);
+      receipt = await nft.spawnFromReserve(accountX.address, toknesMinted);
     });
 
     it("balance", async () => {
@@ -140,7 +140,7 @@ describe("ScandinavianTrailerTrash", async function () {
     });
 
     it("should decrease reserve", async () => {
-      expect(await nft.reserve()).to.eq(RESERVED_TOKENS - toknesMinted);
+      expect(await nft.reserveTrash()).to.eq(RESERVED_TOKENS - toknesMinted);
     });
 
     it("total supply", async () => {
@@ -153,29 +153,29 @@ describe("ScandinavianTrailerTrash", async function () {
     let mintPriceWei: BigNumberish;
 
     beforeEach(async () => {
-      const mintPrice = await nft.mintPrice();
+      const mintPrice = await nft.spawnPrice();
       mintPriceWei = mintPrice.mul(1);
     });
 
     /***** test case 4.1 ******/
     describe("update royalties Amount", () => {
       it("not owner ", async () => {
-        await expect(nft.connect(accountX).setRoyalties("0")).to.revertedWith(
+        await expect(nft.connect(accountX).setTrashTax("0")).to.revertedWith(
           "Ownable: caller is not the owner"
         );
       });
 
       it("should revert for percentage 0 ", async () => {
-        await expect(nft.setRoyalties("0")).to.reverted;
+        await expect(nft.setTrashTax("0")).to.reverted;
       });
 
       it("royalty amount", async () => {
         const royalties = 10; // royalties percentage
-        await nft.setRoyalties(royalties);
+        await nft.setTrashTax(royalties);
 
         let royaltyAmount = null;
 
-        await nft.connect(minter).mint(1, { value: mintPriceWei });
+        await nft.connect(minter).spawn(1, { value: mintPriceWei });
         ({ royaltyAmount } = await nft.royaltyInfo("0", ONE_ETH));
         const percentage = 1 * (royalties / 100);
         expect(royaltyAmount).to.be.eq(
@@ -188,14 +188,14 @@ describe("ScandinavianTrailerTrash", async function () {
     describe(" update royalties receiver", () => {
       it("not owner ", async () => {
         await expect(
-          nft.connect(accountX).setRoyaltiesReceiver(accountX.address)
+          nft.connect(accountX).setTrashTaxReceiver(accountX.address)
         ).to.revertedWith("Ownable: caller is not the owner");
       });
 
       it("update royalites receiver ", async () => {
-        await nft.setRoyaltiesReceiver(accountX.address);
+        await nft.setTrashTaxReceiver(accountX.address);
 
-        await nft.connect(minter).mint(1, { value: mintPriceWei });
+        await nft.connect(minter).spawn(1, { value: mintPriceWei });
         let { receiver } = await nft.royaltyInfo("0", ONE_ETH);
 
         expect(receiver).to.be.eq(accountX.address);
@@ -226,9 +226,9 @@ describe("ScandinavianTrailerTrash", async function () {
   /***** test case 6 ******/
   describe("deploy contract, mint all tokens", () => {
     beforeEach(async () => {
-      await nft.setMintPrice(0);
-      await nft.setMintLimit(MAX_SUPPLY);
-      await nft.mint(PUBLIC_SUPPLY);
+      await nft.setSpawnPrice(0);
+      await nft.setSpawnLimit(MAX_SUPPLY);
+      await nft.spawn(PUBLIC_SUPPLY);
     });
     it("total supply should be equal to max supply", async () => {
       expect(await nft.totalSupply()).to.eq(PUBLIC_SUPPLY);
@@ -249,11 +249,11 @@ describe("ScandinavianTrailerTrash", async function () {
   /***** test case 8 ******/
   describe("deploy contract, mint and test withdraw:", async () => {
     beforeEach(async () => {
-      await nft.setMintLimit(10);
-      const mintPrice = await nft.mintPrice();
+      await nft.setSpawnLimit(10);
+      const mintPrice = await nft.spawnPrice();
       const volume = 5;
       // minting first token, id 0
-      await nft.mint(volume, {
+      await nft.spawn(volume, {
         value: mintPrice.mul(volume),
       });
     });
@@ -284,7 +284,7 @@ describe("ScandinavianTrailerTrash", async function () {
   describe("deploy contract, mint all tokens", function () {
     describe("mint all tokens from reserve", function () {
       beforeEach(async () => {
-        await nft.mintFromReserve(deployer.address, RESERVED_TOKENS);
+        await nft.spawnFromReserve(deployer.address, RESERVED_TOKENS);
       });
 
       it("balance", async () => {
@@ -292,22 +292,22 @@ describe("ScandinavianTrailerTrash", async function () {
       });
 
       it("should revert on reserve limit exceeded", async () => {
-        await expect(nft.mintFromReserve(minter.address, 1)).reverted;
+        await expect(nft.spawnFromReserve(minter.address, 1)).reverted;
       });
     });
 
     describe("mint all reserve tokens, than public supply", () => {
       beforeEach(async () => {
-        await nft.mintFromReserve(deployer.address, RESERVED_TOKENS);
-        await nft.setMintPrice("0");
-        await nft.setMintLimit(MAX_SUPPLY);
+        await nft.spawnFromReserve(deployer.address, RESERVED_TOKENS);
+        await nft.setSpawnPrice("0");
+        await nft.setSpawnLimit(MAX_SUPPLY);
 
         for (let i = 0; i < 10; i++) {
           let volume = 1000;
           if (accounts[i].address == deployer.address)
             volume -= RESERVED_TOKENS;
 
-          await nft.connect(accounts[i]).mint(volume);
+          await nft.connect(accounts[i]).spawn(volume);
         }
       });
 
