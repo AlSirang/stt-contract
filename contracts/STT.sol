@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.12;
 
-import "erc721a/contracts/extensions/ERC721AQueryable.sol";
+import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -27,7 +27,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 //   ░        ░░   ░   ░   ▒    ▒ ░  ░ ░      ░     ░░   ░      ░        ░░   ░   ░   ▒   ░  ░  ░   ░  ░░ ░
 //             ░           ░  ░ ░      ░  ░   ░  ░   ░                    ░           ░  ░      ░   ░  ░  ░
 
-contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
+contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     using Strings for uint256;
 
     uint16 public constant maxTrashSupply = 10000;
@@ -94,6 +94,14 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
      */
     function __mint(address to, uint16 volume) private {
         _safeMint(to, volume);
+    }
+
+    /**
+     * @dev Returns the starting token ID.
+     * To change the starting token ID, please override this function.
+     */
+    function _startTokenId() internal pure override returns (uint256) {
+        return 1;
     }
 
     /*********************************************************/
@@ -172,7 +180,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
     function tokenURI(uint256 _tokenId)
         public
         view
-        override(ERC721A, IERC721A)
+        override
         returns (string memory)
     {
         require(
@@ -194,7 +202,7 @@ contract ScandinavianTrailerTrash is ERC721AQueryable, Ownable, IERC2981 {
         public
         view
         virtual
-        override(ERC721A, IERC721A, IERC165)
+        override(ERC721A, IERC165)
         returns (bool)
     {
         return
