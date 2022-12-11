@@ -11,7 +11,8 @@ const ONE_ETH = ethers.utils.parseEther("1");
 
 describe("ScandinavianTrailerTrash", async function () {
   const BASE_URI = "http://dummy.url/";
-  const TOKEN_URI = `${BASE_URI}0.json`;
+  const TOKEN_URI = `${BASE_URI}1.json`;
+  const TOKEN_ONE = 1;
 
   const NAME = "Scandinavian Trailer Trash";
   const SYMBOL = "Trash";
@@ -25,7 +26,7 @@ describe("ScandinavianTrailerTrash", async function () {
   let deployer: SignerWithAddress; // owner of the Contract
   let accountX: SignerWithAddress; // any account which is not owner of the contract
   let minter: SignerWithAddress; // minter
-  let collector: SignerWithAddress; // minter
+  let finalCollector: SignerWithAddress; // minter
 
   beforeEach(async function () {
     accounts = await ethers.getSigners();
@@ -33,7 +34,7 @@ describe("ScandinavianTrailerTrash", async function () {
     deployer = accounts[0];
     accountX = accounts[1];
     minter = accounts[2];
-    collector = accounts[3];
+    finalCollector = accounts[9];
 
     const scandinavianTrailerTrash = await ethers.getContractFactory(
       "ScandinavianTrailerTrash"
@@ -80,12 +81,12 @@ describe("ScandinavianTrailerTrash", async function () {
     });
 
     it("BASE + TOKEN URI", async () => {
-      let tokenURI = await nft.tokenURI(0);
+      let tokenURI = await nft.tokenURI(TOKEN_ONE);
       expect(tokenURI).to.eq(TOKEN_URI);
     });
 
     it("owner", async () => {
-      expect(await nft.ownerOf(0)).to.eq(minter.address);
+      expect(await nft.ownerOf(TOKEN_ONE)).to.eq(minter.address);
     });
 
     it("balance", async () => {
@@ -96,7 +97,7 @@ describe("ScandinavianTrailerTrash", async function () {
       const TransferEventArgs = [
         ethers.constants.AddressZero,
         minter.address,
-        0,
+        TOKEN_ONE,
       ];
       await expect(receipt)
         .to.emit(nft, "Transfer")
@@ -176,7 +177,7 @@ describe("ScandinavianTrailerTrash", async function () {
         let royaltyAmount = null;
 
         await nft.connect(minter).spawn(1, { value: mintPriceWei });
-        ({ royaltyAmount } = await nft.royaltyInfo("0", ONE_ETH));
+        ({ royaltyAmount } = await nft.royaltyInfo(TOKEN_ONE, ONE_ETH));
         const percentage = 1 * (royalties / 100);
         expect(royaltyAmount).to.be.eq(
           ethers.utils.parseEther(percentage.toString())
@@ -196,7 +197,7 @@ describe("ScandinavianTrailerTrash", async function () {
         await nft.setTrashTaxReceiver(accountX.address);
 
         await nft.connect(minter).spawn(1, { value: mintPriceWei });
-        let { receiver } = await nft.royaltyInfo("0", ONE_ETH);
+        let { receiver } = await nft.royaltyInfo(TOKEN_ONE, ONE_ETH);
 
         expect(receiver).to.be.eq(accountX.address);
       });
@@ -252,7 +253,7 @@ describe("ScandinavianTrailerTrash", async function () {
       await nft.setSpawnLimit(10);
       const mintPrice = await nft.spawnPrice();
       const volume = 5;
-      // minting first token, id 0
+      // minting first token, id 1
       await nft.spawn(volume, {
         value: mintPrice.mul(volume),
       });
@@ -325,6 +326,13 @@ describe("ScandinavianTrailerTrash", async function () {
 
       it("total supply should be 10000", async () => {
         expect(await nft.totalSupply()).to.be.eq(MAX_SUPPLY);
+      });
+
+      it("return correct owner for token 10000", async () => {
+        expect(await nft.ownerOf(MAX_SUPPLY)).to.be.eq(finalCollector.address);
+      });
+      it("revert on reading information for tokenId above 10000", async () => {
+        await expect(nft.ownerOf(MAX_SUPPLY + 1)).to.reverted;
       });
     });
   });
