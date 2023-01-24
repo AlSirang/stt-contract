@@ -3,8 +3,9 @@
 pragma solidity 0.8.12;
 
 import "erc721a/contracts/ERC721A.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 //   ██████  ▄████▄   ▄▄▄       ███▄    █ ▓█████▄  ██▓ ███▄    █  ▄▄▄    ██▒   █▓ ██▓ ▄▄▄       ███▄    █
@@ -30,40 +31,56 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     using Strings for uint256;
 
-    uint16 public constant maxTrashSupply = 10000;
+    address public trashTaxCollector; // EOA for as royalties receiver for collection
+    bytes32 private merkleRoot; // merkel tree root for whitelist
+    string public baseURI;
+
+    uint16 public constant maxTrashSupply = 10000; //  publicTrashSupply + reserveTrash = maxTrashSupply
+    uint16 private constant publicTrashSupply = 9488; // tokens avaiable for public to mint
     uint16 public reserveTrash = 512; // tokens reserve for the owner
 
     uint16 private _totalTrashSupplyPublic; // number of tokens minted from public supply
-    uint16 private publicTrashSupply = maxTrashSupply - reserveTrash; // tokens avaiable for public to mint
     uint16 private trashTax = 690; // royalties 6.9% in bps
 
+    // public spwan price
     uint256 public spawnPrice = 0.069 ether; // mint price per token
     uint16 public spawnLimit = 1; // initially, only 1 tokens per address are allowd to mint.
-    address public trashTaxCollector; // EOA for as royalties receiver for collection
+
+    // whitelist spwan
+    uint256 public whitelistSpawnPrice = 0.005 ether;
+    uint16 public whitelistSpawnLimit = 9; // 9 tokens per address are allowd to mint (1 free).
+    uint16 private freeSpawn = 1; // free spawn per whitelist wallet
 
     bool public isSpawning;
-    string public baseURI;
+    bool public isWhitelistSpawning; // for whitelist minting
+
+    mapping(address => bool) private hasFreeSpawn; // to check if wallet has minted free NFT
+    mapping(address => uint8) private whitelistBalanceOf;
 
     /***************************************************/
     /******************** MODIFIERS ********************/
     /***************************************************/
 
     modifier spawnRequirements(uint16 volume) {
+        require(isSpawning, "Spawning has not yet started!");
+
         require(volume > 0, "Tokens gt 0");
 
         require(msg.value >= (spawnPrice * volume), "Low price!");
 
+        uint256 _newBalanceOf = balanceOf(_msgSender()) + volume;
+        require(_newBalanceOf <= spawnLimit, "Spawn limit exceeded!");
+
+        _;
+    }
+
+    function _maxSupplyCheck(uint16 volume) private {
         uint16 newTotalTrashSupplyPublic = _totalTrashSupplyPublic + volume;
         require(
             newTotalTrashSupplyPublic <= publicTrashSupply,
             "Max supply exceeded!"
         );
-
-        uint256 _newBalanceOf = balanceOf(_msgSender()) + volume;
-        require(_newBalanceOf <= spawnLimit, "Spawn limit exceeded!");
-
         _totalTrashSupplyPublic = newTotalTrashSupplyPublic;
-        _;
     }
 
     /**
@@ -71,8 +88,40 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
      * @param volume is the quantity of tokens to be minted
      */
     function spawn(uint16 volume) external payable spawnRequirements(volume) {
-        require(isSpawning, "Spawning has not yet started!");
-        __mint(_msgSender(), volume);
+        _maxSupplyCheck(volume);
+        _spawn(_msgSender(), volume);
+    }
+
+    /**
+     * @dev  It will mint from tokens allocated for public. calling wallet should be in whitelist
+     * @param _merkleProof is markel tree hash proof for the address
+     */
+    function whitlistSpawn(uint16 volume, bytes32[] calldata _merkleProof)
+        external
+        payable
+    {
+        require(isWhitelistSpawning, "Whitelist spawning has not yet started!");
+
+        bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
+        require(
+            MerkleProof.verify(_merkleProof, merkleRoot, leaf),
+            "Invalid proof"
+        );
+
+        if (!hasFreeSpawn[_msgSender()]) {
+            _maxSupplyCheck(freeSpawn);
+            hasFreeSpawn[_msgSender()] = true; // claimed free spawn
+            _spawn(_msgSender(), freeSpawn);
+        } else {
+            require(volume > 0, "Tokens gt 0");
+            require(msg.value >= (whitelistSpawnPrice * volume), "Low price!");
+            require(
+                (balanceOf(_msgSender()) + volume) <= whitelistSpawnLimit,
+                "Whitelist spawn limit exceeded!"
+            );
+            _maxSupplyCheck(volume);
+            _spawn(_msgSender(), volume);
+        }
     }
 
     /**
@@ -84,7 +133,7 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
         require(volume <= reserveTrash, "Trash reserve exceeded!");
 
         reserveTrash -= volume;
-        __mint(to, volume);
+        _spawn(to, volume);
     }
 
     /**
@@ -92,7 +141,7 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
      * @param to is the address to which the tokens will be minted
      * @param volume is the quantity of tokens to be minted
      */
-    function __mint(address to, uint16 volume) private {
+    function _spawn(address to, uint16 volume) private {
         _safeMint(to, volume);
     }
 
@@ -116,11 +165,26 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     }
 
     /**
+     * @dev it is only callable by Contract owner. it will whitelist minting status
+     */
+    function toggleWhitelistSpawningStatus() external onlyOwner {
+        isWhitelistSpawning = !isWhitelistSpawning;
+    }
+
+    /**
      * @dev it will update mint price
      * @param _spawnPrice is new value for mint
      */
     function setSpawnPrice(uint256 _spawnPrice) external onlyOwner {
         spawnPrice = _spawnPrice;
+    }
+
+    /**
+     * @dev it will update the root Hash for merkel tree (for whitelist minting)
+     * @param _merkleRoot is the root Hash for merkel tree
+     */
+    function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+        merkleRoot = _merkleRoot;
     }
 
     /**
