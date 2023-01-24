@@ -32,30 +32,28 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     using Strings for uint256;
 
     address public trashTaxCollector; // EOA for as royalties receiver for collection
-    bytes32 private merkleRoot; // merkel tree root for whitelist
-    string public baseURI;
+    string public baseURI; // token base uri
+    bytes32 private _merkleRoot; // merkel tree root for whitelist
 
-    uint16 public constant maxTrashSupply = 10000; //  publicTrashSupply + reserveTrash = maxTrashSupply
-    uint16 private constant publicTrashSupply = 9488; // tokens avaiable for public to mint
+    uint16 public constant maxTrashSupply = 10000; //  _publicTrashSupply + reserveTrash = maxTrashSupply
+    uint16 private constant _publicTrashSupply = 9488; // tokens avaiable for public to mint
     uint16 public reserveTrash = 512; // tokens reserve for the owner
-
-    uint16 private _totalTrashSupplyPublic; // number of tokens minted from public supply
-    uint16 private trashTax = 690; // royalties 6.9% in bps
+    uint16 private _totalPublicTrash; // number of tokens minted from public supply
+    uint16 private _trashTax = 690; // royalties 6.9% in bps
 
     // public spwan price
     uint256 public spawnPrice = 0.069 ether; // mint price per token
     uint16 public spawnLimit = 1; // initially, only 1 tokens per address are allowd to mint.
 
     // whitelist spwan
-    uint256 public whitelistSpawnPrice = 0.005 ether;
     uint16 public whitelistSpawnLimit = 9; // 9 tokens per address are allowd to mint (1 free).
-    uint16 private freeSpawn = 1; // free spawn per whitelist wallet
 
     bool public isSpawning;
     bool public isWhitelistSpawning; // for whitelist minting
 
-    mapping(address => bool) private hasFreeSpawn; // to check if wallet has minted free NFT
-    mapping(address => uint8) private whitelistBalanceOf;
+    mapping(address => bool) private _hasFreeSpawn; // to check if wallet has minted free NFT
+    mapping(address => uint16) public whitelistSpawnsOf; // amount of NFTs minted using `whitlistSpawn`.
+    mapping(address => uint16) private _publicSpawnsOf; // amount of NFTs minted using `spawn`.
 
     /***************************************************/
     /******************** MODIFIERS ********************/
@@ -68,19 +66,17 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
 
         require(msg.value >= (spawnPrice * volume), "Low price!");
 
-        uint256 _newBalanceOf = balanceOf(_msgSender()) + volume;
-        require(_newBalanceOf <= spawnLimit, "Spawn limit exceeded!");
+        uint16 totalSpawns = _publicSpawnsOf[_msgSender()] + volume;
+        require(totalSpawns <= spawnLimit, "Spawn limit exceeded!");
 
+        _publicSpawnsOf[_msgSender()] = totalSpawns;
         _;
     }
 
     function _maxSupplyCheck(uint16 volume) private {
-        uint16 newTotalTrashSupplyPublic = _totalTrashSupplyPublic + volume;
-        require(
-            newTotalTrashSupplyPublic <= publicTrashSupply,
-            "Max supply exceeded!"
-        );
-        _totalTrashSupplyPublic = newTotalTrashSupplyPublic;
+        uint16 totalTrash = _totalPublicTrash + volume;
+        require(totalTrash <= _publicTrashSupply, "Max supply exceeded!");
+        _totalPublicTrash = totalTrash;
     }
 
     /**
@@ -104,21 +100,30 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
 
         bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
         require(
-            MerkleProof.verify(_merkleProof, merkleRoot, leaf),
+            MerkleProof.verify(_merkleProof, _merkleRoot, leaf),
             "Invalid proof"
         );
+        uint8 freeSpawn = 1;
 
-        if (!hasFreeSpawn[_msgSender()]) {
+        if (!_hasFreeSpawn[_msgSender()]) {
             _maxSupplyCheck(freeSpawn);
-            hasFreeSpawn[_msgSender()] = true; // claimed free spawn
+            _hasFreeSpawn[_msgSender()] = true; // claimed free spawn
             _spawn(_msgSender(), freeSpawn);
         } else {
             require(volume > 0, "Tokens gt 0");
-            require(msg.value >= (whitelistSpawnPrice * volume), "Low price!");
             require(
-                (balanceOf(_msgSender()) + volume) <= whitelistSpawnLimit,
+                msg.value >= (getWhitelistSpawingPrice() * volume),
+                "Low price!"
+            );
+
+            uint16 _newBalance = whitelistSpawnsOf[_msgSender()] + volume;
+            require(
+                _newBalance <= whitelistSpawnLimit,
                 "Whitelist spawn limit exceeded!"
             );
+
+            whitelistSpawnsOf[_msgSender()] = _newBalance;
+
             _maxSupplyCheck(volume);
             _spawn(_msgSender(), volume);
         }
@@ -131,7 +136,6 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
      */
     function spawnFromReserve(address to, uint16 volume) external onlyOwner {
         require(volume <= reserveTrash, "Trash reserve exceeded!");
-
         reserveTrash -= volume;
         _spawn(to, volume);
     }
@@ -181,10 +185,10 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
 
     /**
      * @dev it will update the root Hash for merkel tree (for whitelist minting)
-     * @param _merkleRoot is the root Hash for merkel tree
+     * @param merkleRoot_ is the root Hash for merkel tree
      */
-    function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
-        merkleRoot = _merkleRoot;
+    function setMerkleRoot(bytes32 merkleRoot_) external onlyOwner {
+        _merkleRoot = merkleRoot_;
     }
 
     /**
@@ -193,6 +197,18 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
      */
     function setSpawnLimit(uint16 _spawnLimit) external onlyOwner {
         spawnLimit = _spawnLimit;
+    }
+
+    /**
+     * @notice amount of nfts a whitelisted wallet can mint including 1 free mint.
+     * @dev it will update the whitelist paid mint limit aka amount of nfts a whitelist wallet can mint.
+     * @param _whitelistSpawnLimit is new value for the limit
+     */
+    function setWhitelistSpawnLimit(uint16 _whitelistSpawnLimit)
+        external
+        onlyOwner
+    {
+        whitelistSpawnLimit = _whitelistSpawnLimit;
     }
 
     /**
@@ -217,12 +233,11 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
 
     /**
      * @dev it will update the royalties for token
-     * @param _trashTax is new percentage of royalties. it should be more than 0 and least 90
+     * @param trashTax_ is new percentage of royalties. it should be more than 0 and less than 100
      */
-    function setTrashTax(uint16 _trashTax) external onlyOwner {
-        require(_trashTax > 0, "should be > 0");
-
-        trashTax = (_trashTax * 100); // convert percentage into bps
+    function setTrashTax(uint16 trashTax_) external onlyOwner {
+        require(trashTax_ > 0, "should be > 0");
+        _trashTax = (trashTax_ * 100); // convert percentage into bps
     }
 
     /**
@@ -236,6 +251,13 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     /********************************************************/
     /******************** VIEW FUNCTIONS ********************/
     /********************************************************/
+
+    /**
+     * @notice returns mint price for paid whitelist NFT mint
+     */
+    function getWhitelistSpawingPrice() public view returns (uint256) {
+        return spawnPrice / 2;
+    }
 
     /**
      * @dev it will return tokenURI for given tokenIdToOwner
@@ -289,7 +311,7 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
             _exists(_tokenId),
             "ERC2981RoyaltyStandard: Royalty info for nonexistent token"
         );
-        return (trashTaxCollector, (_salePrice * trashTax) / 10000);
+        return (trashTaxCollector, (_salePrice * _trashTax) / 10000);
     }
 
     constructor(string memory _uri)
