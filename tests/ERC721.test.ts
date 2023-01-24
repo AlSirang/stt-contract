@@ -4,6 +4,7 @@ import { expect, use as chaiUse } from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { BigNumberish } from "ethers";
 import { ethers } from "hardhat";
+import { getMerkleProof, getMerkleTreeRootHash } from "../scripts/merkel";
 import { ScandinavianTrailerTrash } from "../typechain";
 chaiUse(chaiAsPromised);
 
@@ -22,6 +23,7 @@ describe("ScandinavianTrailerTrash", async function () {
 
   let nft: ScandinavianTrailerTrash;
   let accounts: SignerWithAddress[];
+  const whitelistAddress = new Array<string>();
 
   let deployer: SignerWithAddress; // owner of the Contract
   let accountX: SignerWithAddress; // any account which is not owner of the contract
@@ -35,6 +37,10 @@ describe("ScandinavianTrailerTrash", async function () {
     accountX = accounts[1];
     minter = accounts[2];
     finalCollector = accounts[9];
+
+    for (let i = 0; i < 3; i++) {
+      whitelistAddress.push(accounts[i].address);
+    }
 
     const scandinavianTrailerTrash = await ethers.getContractFactory(
       "ScandinavianTrailerTrash"
@@ -319,7 +325,7 @@ describe("ScandinavianTrailerTrash", async function () {
         });
       });
 
-      it("total public supply should be 9600", async () => {
+      it(`total public supply should be ${PUBLIC_SUPPLY}`, async () => {
         const totalSupply = await nft.totalSupply();
         expect(totalSupply.sub(RESERVED_TOKENS)).to.eq(PUBLIC_SUPPLY);
       });
@@ -333,6 +339,92 @@ describe("ScandinavianTrailerTrash", async function () {
       });
       it("revert on reading information for tokenId above 10000", async () => {
         await expect(nft.ownerOf(MAX_SUPPLY + 1)).to.reverted;
+      });
+    });
+  });
+
+  //  max supply test
+  describe("mint more than max supply", () => {
+    beforeEach(async () => {
+      await Promise.all([
+        nft.spawnFromReserve(deployer.address, RESERVED_TOKENS),
+        nft.setSpawnPrice("0"),
+        nft.setSpawnLimit(15_000),
+      ]);
+      await nft.spawn(PUBLIC_SUPPLY);
+    });
+
+    it("total supply should be 10000", async () => {
+      expect(await nft.totalSupply()).to.be.eq(MAX_SUPPLY);
+    });
+
+    it("should revert mint for max  max supply exceeded", async () => {
+      const exceededAmount = 1;
+
+      await expect(nft.spawn(exceededAmount)).to.revertedWith(
+        "Max supply exceeded!"
+      );
+    });
+  });
+
+  // whitelist test
+  describe("whitlistSpawn", () => {
+    beforeEach(async () => {
+      const merkelNode = getMerkleTreeRootHash(whitelistAddress);
+
+      await Promise.all([
+        nft.setMerkleRoot(merkelNode),
+        nft.toggleWhitelistSpawningStatus(),
+      ]);
+    });
+
+    describe("free mint", () => {
+      it("should mint 1 NFT for free", async () => {
+        const account = accounts[0].address;
+        const proof = getMerkleProof(account, whitelistAddress);
+        await nft.whitlistSpawn(0, proof);
+        expect(await nft.balanceOf(account)).to.eq("1");
+      });
+
+      it("should not allow to with invalid proof", async () => {
+        const account = accounts[0].address;
+        const proof = getMerkleProof(account, whitelistAddress);
+        await expect(
+          nft.connect(accounts[10]).whitlistSpawn(0, proof)
+        ).to.revertedWith("Invalid proof");
+      });
+    });
+
+    describe("paid mint", () => {
+      let account: string;
+      let proof: string[];
+      let whitelistMintPrice: BigNumberish;
+
+      beforeEach(async () => {
+        account = accounts[0].address;
+        proof = getMerkleProof(account, whitelistAddress);
+        await nft.whitlistSpawn(0, proof);
+        whitelistMintPrice = await nft.whitelistSpawnPrice();
+      });
+
+      it("should not allow to mint if already minted for free", async () => {
+        await expect(nft.whitlistSpawn(0, proof)).to.revertedWith(
+          "Tokens gt 0"
+        );
+      });
+      it("should allow to mint paid 9 NFTs (including WL free mint)  ", async () => {
+        // @ts-ignore
+        const mintPrice = whitelistMintPrice.mul(8);
+        await nft.whitlistSpawn(8, proof, { value: mintPrice });
+        expect(await nft.balanceOf(account)).to.eq(9);
+      });
+
+      it("should revert if amount is low  ", async () => {
+        // @ts-ignore
+        const mintPrice = whitelistMintPrice.mul(7);
+        await expect(
+          nft.whitlistSpawn(8, proof, { value: mintPrice })
+        ).to.revertedWith("Low price!");
       });
     });
   });
