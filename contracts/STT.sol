@@ -92,7 +92,7 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
      * @dev  It will mint from tokens allocated for public. calling wallet should be in whitelist
      * @param _merkleProof is markel tree hash proof for the address
      */
-    function whitlistSpawn(uint16 volume, bytes32[] calldata _merkleProof)
+    function whitelistSpawn(uint16 volume, bytes32[] calldata _merkleProof)
         external
         payable
     {
