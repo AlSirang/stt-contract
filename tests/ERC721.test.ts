@@ -368,7 +368,7 @@ describe("ScandinavianTrailerTrash", async function () {
   });
 
   // whitelist test
-  describe("whitlistSpawn", () => {
+  describe("whitelistSpawn", () => {
     beforeEach(async () => {
       const merkelNode = getMerkleTreeRootHash(whitelistAddress);
 
@@ -382,7 +382,7 @@ describe("ScandinavianTrailerTrash", async function () {
       it("should mint 1 NFT for free", async () => {
         const account = accounts[0].address;
         const proof = getMerkleProof(account, whitelistAddress);
-        await nft.whitlistSpawn(0, proof);
+        await nft.whitelistSpawn(0, proof);
         expect(await nft.balanceOf(account)).to.eq("1");
       });
 
@@ -390,7 +390,7 @@ describe("ScandinavianTrailerTrash", async function () {
         const account = accounts[0].address;
         const proof = getMerkleProof(account, whitelistAddress);
         await expect(
-          nft.connect(accounts[10]).whitlistSpawn(0, proof)
+          nft.connect(accounts[10]).whitelistSpawn(0, proof)
         ).to.revertedWith("Invalid proof");
       });
     });
@@ -403,29 +403,81 @@ describe("ScandinavianTrailerTrash", async function () {
       beforeEach(async () => {
         account = accounts[0].address;
         proof = getMerkleProof(account, whitelistAddress);
-        await nft.whitlistSpawn(0, proof);
-        whitelistMintPrice = await nft.whitelistSpawnPrice();
+        await nft.whitelistSpawn(0, proof);
+        whitelistMintPrice = await nft.getWhitelistSpawingPrice();
       });
 
       it("should not allow to mint if already minted for free", async () => {
-        await expect(nft.whitlistSpawn(0, proof)).to.revertedWith(
+        await expect(nft.whitelistSpawn(0, proof)).to.revertedWith(
           "Tokens gt 0"
         );
       });
       it("should allow to mint paid 9 NFTs (including WL free mint)  ", async () => {
         // @ts-ignore
         const mintPrice = whitelistMintPrice.mul(8);
-        await nft.whitlistSpawn(8, proof, { value: mintPrice });
+        await nft.whitelistSpawn(8, proof, { value: mintPrice });
         expect(await nft.balanceOf(account)).to.eq(9);
+      });
+
+      it("should not allow to mint more than whitelist spawn limit(including WL free mint)  ", async () => {
+        // @ts-ignore
+        const mintPrice = whitelistMintPrice.mul(10);
+        await expect(
+          nft.whitelistSpawn(10, proof, { value: mintPrice })
+        ).to.revertedWith("Whitelist spawn limit exceeded!");
       });
 
       it("should revert if amount is low  ", async () => {
         // @ts-ignore
         const mintPrice = whitelistMintPrice.mul(7);
         await expect(
-          nft.whitlistSpawn(8, proof, { value: mintPrice })
+          nft.whitelistSpawn(8, proof, { value: mintPrice })
         ).to.revertedWith("Low price!");
       });
+    });
+  });
+
+  describe("setWhitelistSpawnLimit", () => {
+    it("should only allow owner to setWhitelistSpawnLimit", async () => {
+      const limit = 10;
+      await nft.setWhitelistSpawnLimit(limit);
+
+      expect(await nft.whitelistSpawnLimit()).to.eq(limit);
+    });
+    it("should not allow non-owner to setWhitelistSpawnLimit", async () => {
+      const limit = 10;
+      await expect(nft.connect(accountX).setWhitelistSpawnLimit(limit))
+        .reverted;
+    });
+  });
+
+  describe("whitelist mint, public mint", () => {
+    let publicLimit: number;
+    let whitelistLimit: number;
+    beforeEach(async () => {
+      const merkelNode = getMerkleTreeRootHash(whitelistAddress);
+
+      await nft.setMerkleRoot(merkelNode);
+      await nft.toggleWhitelistSpawningStatus();
+      await nft.setSpawnPrice(0);
+
+      [publicLimit, whitelistLimit] = await Promise.all([
+        nft.spawnLimit(),
+        nft.whitelistSpawnLimit(),
+      ]);
+    });
+
+    it("should allow to mint allowed NFTs from both whitelist and public", async () => {
+      await nft.spawn(publicLimit);
+      const proof = getMerkleProof(accounts[0].address, whitelistAddress);
+      await nft.whitelistSpawn(0, proof); // free mint
+      const paidNFTs = whitelistLimit - 1;
+
+      await nft.whitelistSpawn(paidNFTs, proof); // paid mint
+
+      expect(await nft.balanceOf(accounts[0].address)).to.eq(
+        publicLimit + whitelistLimit
+      );
     });
   });
 });
