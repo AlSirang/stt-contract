@@ -100,12 +100,9 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
         _;
     }
 
-    function _maxSupplyCheck(uint16 volume) private {
-        uint16 totalTrash = _totalPublicTrash + volume;
-        if (totalTrash > _publicTrashSupply) revert TrashExceeded();
-        // require(totalTrash <= _publicTrashSupply, "Max supply exceeded!");
-        _totalPublicTrash = totalTrash;
-    }
+    /***************************************************/
+    /******************** FUNCTIONS ********************/
+    /***************************************************/
 
     /**
      * @dev  It will mint from tokens allocated for public
@@ -176,11 +173,13 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     }
 
     /**
-     * @dev Returns the starting token ID.
-     * To change the starting token ID, please override this function.
+     * @dev private function to compute max supply limit
      */
-    function _startTokenId() internal pure override returns (uint256) {
-        return 1;
+    function _maxSupplyCheck(uint16 volume) private {
+        uint16 totalTrash = _totalPublicTrash + volume;
+        if (totalTrash > _publicTrashSupply) revert TrashExceeded();
+        // require(totalTrash <= _publicTrashSupply, "Max supply exceeded!");
+        _totalPublicTrash = totalTrash;
     }
 
     /*********************************************************/
@@ -338,6 +337,14 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
             "ERC2981RoyaltyStandard: Royalty info for nonexistent token"
         );
         return (trashTaxCollector, (_salePrice * _trashTax) / 10000);
+    }
+
+    /**
+     * @dev Returns the starting token ID.
+     * To change the starting token ID, please override this function.
+     */
+    function _startTokenId() internal pure override returns (uint256) {
+        return 1;
     }
 
     constructor(string memory _uri)
