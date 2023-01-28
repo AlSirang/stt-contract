@@ -119,7 +119,7 @@ describe("ScandinavianTrailerTrash", async function () {
         nft.spawn(volume, {
           value: mintPrice.mul(volume),
         })
-      ).reverted;
+      ).revertedWith("SpawnLimitExceeded");
     });
 
     it("low price", async () => {
@@ -130,7 +130,7 @@ describe("ScandinavianTrailerTrash", async function () {
         nft.spawn(volume, {
           value: mintPrice.mul(volume - 1),
         })
-      ).reverted;
+      ).revertedWith("LowPrice");
     });
   });
 
@@ -231,7 +231,7 @@ describe("ScandinavianTrailerTrash", async function () {
   });
 
   /***** test case 6 ******/
-  describe("deploy contract, mint all tokens", () => {
+  describe("deploy contract, mint all public tokens", () => {
     beforeEach(async () => {
       await nft.setSpawnPrice(0);
       await nft.setSpawnLimit(MAX_SUPPLY);
@@ -299,7 +299,9 @@ describe("ScandinavianTrailerTrash", async function () {
       });
 
       it("should revert on reserve limit exceeded", async () => {
-        await expect(nft.spawnFromReserve(minter.address, 1)).reverted;
+        await expect(nft.spawnFromReserve(minter.address, 1)).revertedWith(
+          "ReservedTrashExceeded"
+        );
       });
     });
 
@@ -361,9 +363,7 @@ describe("ScandinavianTrailerTrash", async function () {
     it("should revert mint for max  max supply exceeded", async () => {
       const exceededAmount = 1;
 
-      await expect(nft.spawn(exceededAmount)).to.revertedWith(
-        "Max supply exceeded!"
-      );
+      await expect(nft.spawn(exceededAmount)).to.revertedWith("TrashExceeded");
     });
   });
 
@@ -391,7 +391,7 @@ describe("ScandinavianTrailerTrash", async function () {
         const proof = getMerkleProof(account, whitelistAddress);
         await expect(
           nft.connect(accounts[10]).whitelistSpawn(0, proof)
-        ).to.revertedWith("Invalid proof");
+        ).to.revertedWith("InvalidWhitelistProof");
       });
     });
 
@@ -409,7 +409,7 @@ describe("ScandinavianTrailerTrash", async function () {
 
       it("should not allow to mint if already minted for free", async () => {
         await expect(nft.whitelistSpawn(0, proof)).to.revertedWith(
-          "Tokens gt 0"
+          "ZeroTokensSpawn"
         );
       });
       it("should allow to mint paid 9 NFTs (including WL free mint)  ", async () => {
@@ -424,7 +424,7 @@ describe("ScandinavianTrailerTrash", async function () {
         const mintPrice = whitelistMintPrice.mul(10);
         await expect(
           nft.whitelistSpawn(10, proof, { value: mintPrice })
-        ).to.revertedWith("Whitelist spawn limit exceeded!");
+        ).to.revertedWith("SpawnLimitExceeded");
       });
 
       it("should revert if amount is low  ", async () => {
@@ -432,7 +432,7 @@ describe("ScandinavianTrailerTrash", async function () {
         const mintPrice = whitelistMintPrice.mul(7);
         await expect(
           nft.whitelistSpawn(8, proof, { value: mintPrice })
-        ).to.revertedWith("Low price!");
+        ).to.revertedWith("LowPrice");
       });
     });
   });
