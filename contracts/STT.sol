@@ -82,7 +82,7 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
 
     mapping(address => bool) public whitelistClaimed; // to check if wallet has minted free NFT
     mapping(address => uint16) public whitelistSpawnsOf; // amount of NFTs minted using `whitlistSpawn`.
-    mapping(address => uint16) private _publicSpawnsOf; // amount of NFTs minted using `spawn`.
+    mapping(address => uint16) public publicSpawnsOf; // amount of NFTs minted using `spawn`.
 
     /***************************************************/
     /******************** MODIFIERS ********************/
@@ -93,10 +93,10 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
         if (volume == 0) revert ZeroTokensSpawn();
         if (msg.value < (spawnPrice * volume)) revert LowPrice();
 
-        uint16 totalSpawns = _publicSpawnsOf[_msgSender()] + volume;
+        uint16 totalSpawns = publicSpawnsOf[_msgSender()] + volume;
         if (totalSpawns > spawnLimit) revert SpawnLimitExceeded();
 
-        _publicSpawnsOf[_msgSender()] = totalSpawns;
+        publicSpawnsOf[_msgSender()] = totalSpawns;
         _;
     }
 
