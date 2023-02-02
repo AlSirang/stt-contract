@@ -80,7 +80,7 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     string public baseURI; // token base uri
     bytes32 private _merkleRoot; // merkel tree root for whitelist
 
-    mapping(address => bool) private _hasFreeSpawn; // to check if wallet has minted free NFT
+    mapping(address => bool) public whitelistClaimed; // to check if wallet has minted free NFT
     mapping(address => uint16) public whitelistSpawnsOf; // amount of NFTs minted using `whitlistSpawn`.
     mapping(address => uint16) private _publicSpawnsOf; // amount of NFTs minted using `spawn`.
 
@@ -129,11 +129,10 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
         if (!MerkleProof.verify(_merkleProof, _merkleRoot, leaf))
             revert InvalidWhitelistProof();
 
-        uint8 freeSpawn = 1;
-
-        if (!_hasFreeSpawn[_msgSender()]) {
+        if (!whitelistClaimed[_msgSender()]) {
+            uint8 freeSpawn = 1;
             _maxSupplyCheck(freeSpawn);
-            _hasFreeSpawn[_msgSender()] = true; // claimed free spawn
+            whitelistClaimed[_msgSender()] = true; // claimed free spawn
             _spawn(_msgSender(), freeSpawn);
         } else {
             // require(volume > 0, "Tokens gt 0");
