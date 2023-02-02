@@ -80,9 +80,9 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     string public baseURI; // token base uri
     bytes32 private _merkleRoot; // merkel tree root for whitelist
 
-    mapping(address => bool) public whitelistClaimed; // to check if wallet has minted free NFT
-    mapping(address => uint16) public whitelistSpawnsOf; // amount of NFTs minted using `whitlistSpawn`.
-    mapping(address => uint16) public publicSpawnsOf; // amount of NFTs minted using `spawn`.
+    mapping(address => bool) public _whitelistClaimed; // to check if wallet has minted free NFT
+    mapping(address => uint16) public _whitelistSpawnsOf; // amount of NFTs minted using `whitlistSpawn`.
+    mapping(address => uint16) public _publicSpawnsOf; // amount of NFTs minted using `spawn`.
 
     /***************************************************/
     /******************** MODIFIERS ********************/
@@ -93,10 +93,10 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
         if (volume == 0) revert ZeroTokensSpawn();
         if (msg.value < (spawnPrice * volume)) revert LowPrice();
 
-        uint16 totalSpawns = publicSpawnsOf[_msgSender()] + volume;
+        uint16 totalSpawns = _publicSpawnsOf[_msgSender()] + volume;
         if (totalSpawns > spawnLimit) revert SpawnLimitExceeded();
 
-        publicSpawnsOf[_msgSender()] = totalSpawns;
+        _publicSpawnsOf[_msgSender()] = totalSpawns;
         _;
     }
 
@@ -129,10 +129,10 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
         if (!MerkleProof.verify(_merkleProof, _merkleRoot, leaf))
             revert InvalidWhitelistProof();
 
-        if (!whitelistClaimed[_msgSender()]) {
+        if (!_whitelistClaimed[_msgSender()]) {
             uint8 freeSpawn = 1;
             _maxSupplyCheck(freeSpawn);
-            whitelistClaimed[_msgSender()] = true; // claimed free spawn
+            _whitelistClaimed[_msgSender()] = true; // claimed free spawn
             _spawn(_msgSender(), freeSpawn);
         } else {
             // require(volume > 0, "Tokens gt 0");
@@ -141,10 +141,10 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
             if (msg.value < (getWhitelistSpawingPrice() * volume))
                 revert LowPrice();
 
-            uint16 _newBalance = whitelistSpawnsOf[_msgSender()] + volume;
+            uint16 _newBalance = _whitelistSpawnsOf[_msgSender()] + volume;
             if (_newBalance > whitelistSpawnLimit) revert SpawnLimitExceeded();
 
-            whitelistSpawnsOf[_msgSender()] = _newBalance;
+            _whitelistSpawnsOf[_msgSender()] = _newBalance;
 
             _maxSupplyCheck(volume);
             _spawn(_msgSender(), volume);
@@ -275,6 +275,23 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     /********************************************************/
     /******************** VIEW FUNCTIONS ********************/
     /********************************************************/
+
+    /**
+     * @notice returns amount of NTFs mint with public and whitelist functions
+     */
+    function getSpawns(address account)
+        external
+        view
+        returns (
+            uint256 publicSpawn,
+            uint256 whitelistSpwan,
+            bool whitelistClaimed
+        )
+    {
+        publicSpawn = _publicSpawnsOf[account];
+        whitelistSpwan = _whitelistSpawnsOf[account];
+        whitelistClaimed = _whitelistClaimed[account];
+    }
 
     /**
      * @notice returns mint price for paid whitelist NFT mint
