@@ -14,7 +14,8 @@
     "erc721a": "^4.2.0",
     "hardhat": "^2.9.3",
     "keccak256": "^1.0.6",
-    "merkletreejs": "^0.3.9"
+    "merkletreejs": "^0.3.9",
+    "operator-filter-registry": "^1.4.1"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.6",
