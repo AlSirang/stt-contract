@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.12;
+pragma solidity ^0.8.12;
 
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 
 //   ██████  ▄████▄   ▄▄▄       ███▄    █ ▓█████▄  ██▓ ███▄    █  ▄▄▄    ██▒   █▓ ██▓ ▄▄▄       ███▄    █
 // ▒██    ▒ ▒██▀ ▀█  ▒████▄     ██ ▀█   █ ▒██▀ ██▌▓██▒ ██ ▀█   █ ▒████▄ ▓██░   █▒▓██▒▒████▄     ██ ▀█   █
@@ -28,9 +29,9 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 //   ░        ░░   ░   ░   ▒    ▒ ░  ░ ░      ░     ░░   ░      ░        ░░   ░   ░   ▒   ░  ░  ░   ░  ░░ ░
 //             ░           ░  ░ ░      ░  ░   ░  ░   ░                    ░           ░  ░      ░   ░  ░  ░
 
-/****************************************************************/
-/**************************** ERRORS ****************************/
-/****************************************************************/
+// =============================================================
+//                       ERRORS
+// =============================================================
 
 /// When public spawning has not yet started
 error SpawningIsPaused();
@@ -54,10 +55,19 @@ error ReservedTrashExceeded();
 error InvalidWhitelistProof();
 
 /****************************************************************/
-/*************************** CONTRACT ***************************/
+/***************************  ***************************/
 /****************************************************************/
 
-contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
+// =============================================================
+//       Scandinavian Trailer Trash ERC721A Contract
+// =============================================================
+
+contract ScandinavianTrailerTrash is
+    DefaultOperatorFilterer,
+    ERC721A,
+    Ownable,
+    IERC2981
+{
     using Strings for uint256;
 
     uint16 public constant maxTrashSupply = 10000; //  _publicTrashSupply + reserveTrash = maxTrashSupply
@@ -84,9 +94,9 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     mapping(address => uint16) public _whitelistSpawnsOf; // amount of NFTs minted using `whitlistSpawn`.
     mapping(address => uint16) public _publicSpawnsOf; // amount of NFTs minted using `spawn`.
 
-    /***************************************************/
-    /******************** MODIFIERS ********************/
-    /***************************************************/
+    // =============================================================
+    //                       MODIFIERS
+    // =============================================================
 
     modifier spawnRequirements(uint16 volume) {
         if (!isSpawning) revert SpawningIsPaused();
@@ -100,9 +110,9 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
         _;
     }
 
-    /***************************************************/
-    /******************** FUNCTIONS ********************/
-    /***************************************************/
+    // =============================================================
+    //                       FUNCTIONS
+    // =============================================================
 
     /**
      * @dev  It will mint from tokens allocated for public
@@ -181,9 +191,9 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
         _totalPublicTrash = totalTrash;
     }
 
-    /*********************************************************/
-    /******************** ADMIN FUNCTIONS ********************/
-    /*********************************************************/
+    // =============================================================
+    //                      ADMIN FUNCTIONS
+    // =============================================================
 
     /**
      * @dev it is only callable by Contract owner. it will toggle public minting status
@@ -272,9 +282,9 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
         require(success, "Transfer failed!");
     }
 
-    /********************************************************/
-    /******************** VIEW FUNCTIONS ********************/
-    /********************************************************/
+    // =============================================================
+    //                       VIEW FUNCTIONS
+    // =============================================================
 
     /**
      * @notice returns amount of NTFs mint with public and whitelist functions
@@ -361,6 +371,72 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
      */
     function _startTokenId() internal pure override returns (uint256) {
         return 1;
+    }
+
+    // =============================================================
+    //                 ON-CHAIN ROYALTY ENFORCEMENT
+    // =============================================================
+
+    /**
+     * @dev override  {ERC721-setApprovalForAll} to enforce onchain royalty
+     * See {ERC721-setApprovalForAll}.
+     */
+    function setApprovalForAll(address operator, bool approved)
+        public
+        override
+        onlyAllowedOperatorApproval(operator)
+    {
+        super.setApprovalForAll(operator, approved);
+    }
+
+    /**
+     * @dev override  {ERC721-approve} to enforce onchain royalty
+     * See {ERC721-approve}.
+     */
+    function approve(address operator, uint256 tokenId)
+        public
+        payable
+        override
+        onlyAllowedOperatorApproval(operator)
+    {
+        super.approve(operator, tokenId);
+    }
+
+    /**
+     * @dev override  {ERC721-transferFrom} to enforce onchain royalty
+     * See {ERC721-transferFrom}.
+     */
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public payable override onlyAllowedOperator(from) {
+        super.transferFrom(from, to, tokenId);
+    }
+
+    /**
+     * @dev override  {ERC721-safeTransferFrom} to enforce onchain royalty
+     * See {ERC721-transferFrom}.
+     */
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public payable override onlyAllowedOperator(from) {
+        super.safeTransferFrom(from, to, tokenId);
+    }
+
+    /**
+     * @dev override  {ERC721-safeTransferFrom} to enforce onchain royalty
+     * See {ERC721-transferFrom}.
+     */
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) public payable override onlyAllowedOperator(from) {
+        super.safeTransferFrom(from, to, tokenId, data);
     }
 
     constructor(string memory _uri)
