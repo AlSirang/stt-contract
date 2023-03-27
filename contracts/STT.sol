@@ -90,9 +90,9 @@ contract ScandinavianTrailerTrash is
     string public baseURI; // token base uri
     bytes32 private _merkleRoot; // merkel tree root for whitelist
 
-    mapping(address => bool) public _whitelistClaimed; // to check if wallet has minted free NFT
-    mapping(address => uint16) public _whitelistSpawnsOf; // amount of NFTs minted using `whitlistSpawn`.
-    mapping(address => uint16) public _publicSpawnsOf; // amount of NFTs minted using `spawn`.
+    mapping(address => bool) private _whitelistClaimed; // to check if wallet has minted free NFT
+    mapping(address => uint16) private _whitelistSpawnsOf; // amount of NFTs minted using `whitlistSpawn`.
+    mapping(address => uint16) private _publicSpawnsOf; // amount of NFTs minted using `spawn`.
 
     // =============================================================
     //                       MODIFIERS
@@ -132,33 +132,32 @@ contract ScandinavianTrailerTrash is
         payable
     {
         if (!isWhitelistSpawning) revert SpawningIsPaused();
-
-        // require(isWhitelistSpawning, "Whitelist spawning has not yet started!");
+        if (volume == 0) revert ZeroTokensSpawn();
 
         bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
         if (!MerkleProof.verify(_merkleProof, _merkleRoot, leaf))
             revert InvalidWhitelistProof();
 
+         uint16 paidSpawn = volume;
+
         if (!_whitelistClaimed[_msgSender()]) {
-            uint8 freeSpawn = 1;
-            _maxSupplyCheck(freeSpawn);
-            _whitelistClaimed[_msgSender()] = true; // claimed free spawn
-            _spawn(_msgSender(), freeSpawn);
-        } else {
-            // require(volume > 0, "Tokens gt 0");
-            if (volume == 0) revert ZeroTokensSpawn();
-
-            if (msg.value < (getWhitelistSpawingPrice() * volume))
-                revert LowPrice();
-
-            uint16 _newBalance = _whitelistSpawnsOf[_msgSender()] + volume;
-            if (_newBalance > whitelistSpawnLimit) revert SpawnLimitExceeded();
-
-            _whitelistSpawnsOf[_msgSender()] = _newBalance;
-
+            paidSpawn = volume - 1;
             _maxSupplyCheck(volume);
-            _spawn(_msgSender(), volume);
-        }
+            _whitelistClaimed[_msgSender()] = true; // claimed free spawn
+        } 
+      
+        
+        if (msg.value < (getWhitelistSpawingPrice() * paidSpawn))
+            revert LowPrice();
+
+        uint16 _newBalance = _whitelistSpawnsOf[_msgSender()] + volume;
+        if (_newBalance > whitelistSpawnLimit) revert SpawnLimitExceeded();
+
+        _whitelistSpawnsOf[_msgSender()] = _newBalance;
+
+        _maxSupplyCheck(volume);
+        _spawn(_msgSender(), volume);
+        
     }
 
     /**
@@ -187,7 +186,6 @@ contract ScandinavianTrailerTrash is
     function _maxSupplyCheck(uint16 volume) private {
         uint16 totalTrash = _totalPublicTrash + volume;
         if (totalTrash > _publicTrashSupply) revert TrashExceeded();
-        // require(totalTrash <= _publicTrashSupply, "Max supply exceeded!");
         _totalPublicTrash = totalTrash;
     }
 
