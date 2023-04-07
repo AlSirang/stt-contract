@@ -399,22 +399,27 @@ describe("ScandinavianTrailerTrash", async function () {
       let account: string;
       let proof: string[];
       let whitelistMintPrice: BigNumberish;
+      let whitelistspawnlimit: number;
 
       beforeEach(async () => {
         account = accounts[0].address;
         proof = getMerkleProof(account, whitelistAddress);
         await nft.whitelistSpawn(1, proof);
         whitelistMintPrice = await nft.getWhitelistSpawingPrice();
+        whitelistspawnlimit = await nft.whitelistSpawnLimit();
       });
 
       it("should not allow to mint if already minted for free", async () => {
         await expect(nft.whitelistSpawn(1, proof)).to.reverted;
       });
       it("should allow to mint paid 9 NFTs (including WL free mint)  ", async () => {
+        const paidNFTsMint = whitelistspawnlimit - 1;
         // @ts-ignore
-        const mintPrice = whitelistMintPrice.mul(8);
-        await nft.whitelistSpawn(8, proof, { value: mintPrice });
-        expect(await nft.balanceOf(account)).to.eq(9);
+        const mintPrice = whitelistMintPrice.mul(paidNFTsMint);
+        await nft.whitelistSpawn(paidNFTsMint, proof, {
+          value: mintPrice,
+        });
+        expect(await nft.balanceOf(account)).to.eq(whitelistspawnlimit);
       });
 
       it("should not allow to mint more than whitelist spawn limit(including WL free mint)  ", async () => {

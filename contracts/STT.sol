@@ -77,11 +77,11 @@ contract ScandinavianTrailerTrash is
     uint16 private _trashTax = 690; // royalties 6.9% in bps
 
     // public spwan price
-    uint256 public spawnPrice = 0.069 ether; // mint price per token
-    uint16 public spawnLimit = 1; // initially, only 1 tokens per address are allowd to mint.
+    uint256 public spawnPrice = 0.01 ether; // mint price per token
+    uint16 public spawnLimit = 10; // tokens per address are allowd to mint.
 
     // whitelist spwan
-    uint16 public whitelistSpawnLimit = 9; // 9 tokens per address are allowd to mint (1 free).
+    uint16 public whitelistSpawnLimit = 10; // 9 tokens per address are allowd to mint (1 free).
 
     bool public isSpawning;
     bool public isWhitelistSpawning; // for whitelist minting
@@ -127,10 +127,10 @@ contract ScandinavianTrailerTrash is
      * @dev  It will mint from tokens allocated for public. calling wallet should be in whitelist
      * @param _merkleProof is markel tree hash proof for the address
      */
-    function whitelistSpawn(uint16 volume, bytes32[] calldata _merkleProof)
-        external
-        payable
-    {
+    function whitelistSpawn(
+        uint16 volume,
+        bytes32[] calldata _merkleProof
+    ) external payable {
         if (!isWhitelistSpawning) revert SpawningIsPaused();
         if (volume == 0) revert ZeroTokensSpawn();
 
@@ -138,15 +138,14 @@ contract ScandinavianTrailerTrash is
         if (!MerkleProof.verify(_merkleProof, _merkleRoot, leaf))
             revert InvalidWhitelistProof();
 
-         uint16 paidSpawn = volume;
+        uint16 paidSpawn = volume;
 
         if (!_whitelistClaimed[_msgSender()]) {
             paidSpawn = volume - 1;
             _maxSupplyCheck(volume);
             _whitelistClaimed[_msgSender()] = true; // claimed free spawn
-        } 
-      
-        
+        }
+
         if (msg.value < (getWhitelistSpawingPrice() * paidSpawn))
             revert LowPrice();
 
@@ -157,7 +156,6 @@ contract ScandinavianTrailerTrash is
 
         _maxSupplyCheck(volume);
         _spawn(_msgSender(), volume);
-        
     }
 
     /**
@@ -236,10 +234,9 @@ contract ScandinavianTrailerTrash is
      * @dev it will update the whitelist paid mint limit aka amount of nfts a whitelist wallet can mint.
      * @param _whitelistSpawnLimit is new value for the limit
      */
-    function setWhitelistSpawnLimit(uint16 _whitelistSpawnLimit)
-        external
-        onlyOwner
-    {
+    function setWhitelistSpawnLimit(
+        uint16 _whitelistSpawnLimit
+    ) external onlyOwner {
         whitelistSpawnLimit = _whitelistSpawnLimit;
     }
 
@@ -255,10 +252,9 @@ contract ScandinavianTrailerTrash is
      * @dev it will update the address for royalties receiver
      * @param _trashTaxCollector is new royalty receiver
      */
-    function setTrashTaxReceiver(address _trashTaxCollector)
-        external
-        onlyOwner
-    {
+    function setTrashTaxReceiver(
+        address _trashTaxCollector
+    ) external onlyOwner {
         require(_trashTaxCollector != address(0));
         trashTaxCollector = _trashTaxCollector;
     }
@@ -287,7 +283,9 @@ contract ScandinavianTrailerTrash is
     /**
      * @notice returns amount of NTFs mint with public and whitelist functions
      */
-    function getSpawns(address account)
+    function getSpawns(
+        address account
+    )
         external
         view
         returns (
@@ -312,12 +310,9 @@ contract ScandinavianTrailerTrash is
      * @dev it will return tokenURI for given tokenIdToOwner
      * @param _tokenId is valid token id mint in this contract
      */
-    function tokenURI(uint256 _tokenId)
-        public
-        view
-        override
-        returns (string memory)
-    {
+    function tokenURI(
+        uint256 _tokenId
+    ) public view override returns (string memory) {
         require(
             _exists(_tokenId),
             "ERC721Metadata: URI query for nonexistent token"
@@ -333,13 +328,9 @@ contract ScandinavianTrailerTrash is
      *
      * This function call must use less than 30 000 gas.
      */
-    function supportsInterface(bytes4 _interfaceId)
-        public
-        view
-        virtual
-        override(ERC721A, IERC165)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 _interfaceId
+    ) public view virtual override(ERC721A, IERC165) returns (bool) {
         return
             _interfaceId == type(IERC2981).interfaceId ||
             super.supportsInterface(_interfaceId);
@@ -350,12 +341,10 @@ contract ScandinavianTrailerTrash is
      *  @param _tokenId is valid token number
      *  @param _salePrice is amount for which token will be traded
      */
-    function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
-        external
-        view
-        override
-        returns (address receiver, uint256 royaltyAmount)
-    {
+    function royaltyInfo(
+        uint256 _tokenId,
+        uint256 _salePrice
+    ) external view override returns (address receiver, uint256 royaltyAmount) {
         require(
             _exists(_tokenId),
             "ERC2981RoyaltyStandard: Royalty info for nonexistent token"
@@ -379,11 +368,10 @@ contract ScandinavianTrailerTrash is
      * @dev override  {ERC721-setApprovalForAll} to enforce onchain royalty
      * See {ERC721-setApprovalForAll}.
      */
-    function setApprovalForAll(address operator, bool approved)
-        public
-        override
-        onlyAllowedOperatorApproval(operator)
-    {
+    function setApprovalForAll(
+        address operator,
+        bool approved
+    ) public override onlyAllowedOperatorApproval(operator) {
         super.setApprovalForAll(operator, approved);
     }
 
@@ -391,12 +379,10 @@ contract ScandinavianTrailerTrash is
      * @dev override  {ERC721-approve} to enforce onchain royalty
      * See {ERC721-approve}.
      */
-    function approve(address operator, uint256 tokenId)
-        public
-        payable
-        override
-        onlyAllowedOperatorApproval(operator)
-    {
+    function approve(
+        address operator,
+        uint256 tokenId
+    ) public payable override onlyAllowedOperatorApproval(operator) {
         super.approve(operator, tokenId);
     }
 
@@ -437,9 +423,9 @@ contract ScandinavianTrailerTrash is
         super.safeTransferFrom(from, to, tokenId, data);
     }
 
-    constructor(string memory _uri)
-        ERC721A("Scandinavian Trailer Trash", "Trash")
-    {
+    constructor(
+        string memory _uri
+    ) ERC721A("Scandinavian Trailer Trash", "Trash") {
         baseURI = _uri;
         trashTaxCollector = msg.sender;
     }
