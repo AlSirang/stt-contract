@@ -19,3 +19,8 @@ export function getMerkleProof(address: string, whitelist: string[]) {
 
   return merkeltree.getHexProof(walletHash);
 }
+
+export function getMerkleTreeRootHex(whitelist: string[]) {
+  const merkeltree = createMerkleTreeRoo(whitelist);
+  return merkeltree.getHexRoot();
+}
