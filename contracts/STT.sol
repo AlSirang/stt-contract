@@ -6,7 +6,6 @@ import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 
 //   ██████  ▄████▄   ▄▄▄       ███▄    █ ▓█████▄  ██▓ ███▄    █  ▄▄▄    ██▒   █▓ ██▓ ▄▄▄       ███▄    █
 // ▒██    ▒ ▒██▀ ▀█  ▒████▄     ██ ▀█   █ ▒██▀ ██▌▓██▒ ██ ▀█   █ ▒████▄ ▓██░   █▒▓██▒▒████▄     ██ ▀█   █
@@ -54,12 +53,7 @@ error ReservedTrashExceeded();
 //       Scandinavian Trailer Trash ERC721A Contract
 // =============================================================
 
-contract ScandinavianTrailerTrash is
-    DefaultOperatorFilterer,
-    ERC721A,
-    Ownable,
-    IERC2981
-{
+contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     using Strings for uint256;
 
     uint16 public constant maxTrashSupply = 10000; //  _publicTrashSupply + reserveTrash = maxTrashSupply
@@ -263,67 +257,8 @@ contract ScandinavianTrailerTrash is
     }
 
     // =============================================================
-    //                 ON-CHAIN ROYALTY ENFORCEMENT
+    //                      CONSTRUCTOR
     // =============================================================
-
-    /**
-     * @dev override  {ERC721-setApprovalForAll} to enforce onchain royalty
-     * See {ERC721-setApprovalForAll}.
-     */
-    function setApprovalForAll(
-        address operator,
-        bool approved
-    ) public override onlyAllowedOperatorApproval(operator) {
-        super.setApprovalForAll(operator, approved);
-    }
-
-    /**
-     * @dev override  {ERC721-approve} to enforce onchain royalty
-     * See {ERC721-approve}.
-     */
-    function approve(
-        address operator,
-        uint256 tokenId
-    ) public payable override onlyAllowedOperatorApproval(operator) {
-        super.approve(operator, tokenId);
-    }
-
-    /**
-     * @dev override  {ERC721-transferFrom} to enforce onchain royalty
-     * See {ERC721-transferFrom}.
-     */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public payable override onlyAllowedOperator(from) {
-        super.transferFrom(from, to, tokenId);
-    }
-
-    /**
-     * @dev override  {ERC721-safeTransferFrom} to enforce onchain royalty
-     * See {ERC721-transferFrom}.
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public payable override onlyAllowedOperator(from) {
-        super.safeTransferFrom(from, to, tokenId);
-    }
-
-    /**
-     * @dev override  {ERC721-safeTransferFrom} to enforce onchain royalty
-     * See {ERC721-transferFrom}.
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) public payable override onlyAllowedOperator(from) {
-        super.safeTransferFrom(from, to, tokenId, data);
-    }
 
     constructor(
         string memory _uri

@@ -4,7 +4,6 @@ import { expect, use as chaiUse } from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { BigNumberish } from "ethers";
 import { ethers } from "hardhat";
-// import { getMerkleProof, getMerkleTreeRootHash } from "../scripts/merkel";
 import { ScandinavianTrailerTrash } from "../typechain";
 chaiUse(chaiAsPromised);
 
@@ -368,120 +367,6 @@ describe("ScandinavianTrailerTrash", async function () {
       await expect(nft.spawn(exceededAmount)).to.revertedWith("TrashExceeded");
     });
   });
-
-  // // whitelist test
-  // describe("whitelistSpawn", () => {
-  //   beforeEach(async () => {
-  //     const merkelNode = getMerkleTreeRootHash(whitelistAddress);
-
-  //     await Promise.all([
-  //       nft.setMerkleRoot(merkelNode),
-  //       nft.toggleWhitelistSpawningStatus(),
-  //     ]);
-  //   });
-
-  //   describe("free mint", () => {
-  //     it("should mint 1 NFT for free", async () => {
-  //       const account = accounts[0].address;
-  //       const proof = getMerkleProof(account, whitelistAddress);
-  //       await nft.whitelistSpawn(1, proof);
-  //       expect(await nft.balanceOf(account)).to.eq("1");
-  //     });
-
-  //     it("should not allow to with invalid proof", async () => {
-  //       const account = accounts[0].address;
-  //       const proof = getMerkleProof(account, whitelistAddress);
-  //       await expect(
-  //         nft.connect(accounts[10]).whitelistSpawn(1, proof)
-  //       ).to.revertedWith("InvalidWhitelistProof");
-  //     });
-  //   });
-
-  //   describe("paid mint", () => {
-  //     let account: string;
-  //     let proof: string[];
-  //     let whitelistMintPrice: BigNumberish;
-  //     let whitelistspawnlimit: number;
-
-  //     beforeEach(async () => {
-  //       account = accounts[0].address;
-  //       proof = getMerkleProof(account, whitelistAddress);
-  //       await nft.whitelistSpawn(1, proof);
-  //       whitelistMintPrice = await nft.getWhitelistSpawingPrice();
-  //       whitelistspawnlimit = await nft.whitelistSpawnLimit();
-  //     });
-
-  //     it("should not allow to mint if already minted for free", async () => {
-  //       await expect(nft.whitelistSpawn(1, proof)).to.reverted;
-  //     });
-  //     it("should allow to mint paid 9 NFTs (including WL free mint)  ", async () => {
-  //       const paidNFTsMint = whitelistspawnlimit - 1;
-  //       // @ts-ignore
-  //       const mintPrice = whitelistMintPrice.mul(paidNFTsMint);
-  //       await nft.whitelistSpawn(paidNFTsMint, proof, {
-  //         value: mintPrice,
-  //       });
-  //       expect(await nft.balanceOf(account)).to.eq(whitelistspawnlimit);
-  //     });
-
-  //     it("should not allow to mint more than whitelist spawn limit(including WL free mint)  ", async () => {
-  //       // @ts-ignore
-  //       const mintPrice = whitelistMintPrice.mul(10);
-  //       await expect(
-  //         nft.whitelistSpawn(10, proof, { value: mintPrice })
-  //       ).to.revertedWith("SpawnLimitExceeded");
-  //     });
-
-  //     it("should revert if amount is low  ", async () => {
-  //       // @ts-ignore
-  //       const mintPrice = whitelistMintPrice.mul(7);
-  //       await expect(
-  //         nft.whitelistSpawn(8, proof, { value: mintPrice })
-  //       ).to.revertedWith("LowPrice");
-  //     });
-  //   });
-  // });
-
-  // describe("setWhitelistSpawnLimit", () => {
-  //   it("should only allow owner to setWhitelistSpawnLimit", async () => {
-  //     const limit = 10;
-  //     await nft.setWhitelistSpawnLimit(limit);
-
-  //     expect(await nft.whitelistSpawnLimit()).to.eq(limit);
-  //   });
-  //   it("should not allow non-owner to setWhitelistSpawnLimit", async () => {
-  //     const limit = 10;
-  //     await expect(nft.connect(accountX).setWhitelistSpawnLimit(limit))
-  //       .reverted;
-  //   });
-  // });
-
-  // describe("whitelist mint, public mint", () => {
-  //   let publicLimit: number;
-  //   let whitelistLimit: number;
-  //   beforeEach(async () => {
-  //     const merkelNode = getMerkleTreeRootHash(whitelistAddress);
-
-  //     await nft.setMerkleRoot(merkelNode);
-  //     await nft.toggleWhitelistSpawningStatus();
-  //     await nft.setSpawnPrice(0);
-
-  //     [publicLimit, whitelistLimit] = await Promise.all([
-  //       nft.spawnLimit(),
-  //       nft.whitelistSpawnLimit(),
-  //     ]);
-  //   });
-
-  //   it("should allow to mint allowed NFTs from both whitelist and public", async () => {
-  //     await nft.spawn(publicLimit);
-  //     const proof = getMerkleProof(accounts[0].address, whitelistAddress);
-  //     await nft.whitelistSpawn(whitelistLimit, proof);
-
-  //     expect(await nft.balanceOf(accounts[0].address)).to.eq(
-  //       publicLimit + whitelistLimit
-  //     );
-  //   });
-  // });
 
   /*********************************************************/
   /******************     V3 test **************************/
