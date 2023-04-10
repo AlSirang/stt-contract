@@ -487,7 +487,7 @@ describe("ScandinavianTrailerTrash", async function () {
   /******************     V3 test **************************/
   /*********************************************************/
 
-  describe.only("V3 test", () => {
+  describe("V3 test", () => {
     describe("default spawn", () => {
       it("should be able to free spawn", async () => {
         const volume = 1;

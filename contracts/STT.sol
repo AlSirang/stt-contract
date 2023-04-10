@@ -69,7 +69,7 @@ contract ScandinavianTrailerTrash is
     uint16 private _trashTax = 690; // royalties 6.9% in bps
 
     // public spwan price
-    uint256 public spawnPrice = 0.01 ether; // spawn price per token
+    uint256 public spawnPrice = 0.004 ether; // spawn price per token
     uint16 public spawnLimit = 10; // tokens per address are allowd to spawn.
     uint16 public freeSpawnLimit = 1; // free tokens per address
     bool public isSpawning;
