@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
@@ -50,9 +49,6 @@ error SpawnLimitExceeded();
 
 /// Reserved limit exceed error
 error ReservedTrashExceeded();
-
-/// Merkle Proof error
-error InvalidWhitelistProof();
 
 // =============================================================
 //       Scandinavian Trailer Trash ERC721A Contract
