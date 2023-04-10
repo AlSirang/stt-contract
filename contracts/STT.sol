@@ -83,7 +83,7 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
 
         uint16 freeSpawnOf_ = freeSpawnLimit - freeSpawnOf[_msgSender()];
 
-        freeSpawnOf[_msgSender()] += freeSpawnLimit;
+        freeSpawnOf[_msgSender()] += freeSpawnOf_;
 
         if (msg.value < (spawnPrice * (volume - freeSpawnOf_)))
             revert LowPrice();
