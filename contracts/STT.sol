@@ -260,9 +260,7 @@ contract ScandinavianTrailerTrash is ERC721A, Ownable, IERC2981 {
     //                      CONSTRUCTOR
     // =============================================================
 
-    constructor(
-        string memory _uri
-    ) ERC721A("Scandinavian Trailer Trash", "Trash") {
+    constructor(string memory _uri) ERC721A("Scandinaviantt", "Trash") {
         baseURI = _uri;
         trashTaxCollector = msg.sender;
     }
