@@ -4,7 +4,7 @@ import { expect, use as chaiUse } from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { BigNumberish } from "ethers";
 import { ethers } from "hardhat";
-import { getMerkleProof, getMerkleTreeRootHash } from "../scripts/merkel";
+// import { getMerkleProof, getMerkleTreeRootHash } from "../scripts/merkel";
 import { ScandinavianTrailerTrash } from "../typechain";
 chaiUse(chaiAsPromised);
 
@@ -23,7 +23,7 @@ describe("ScandinavianTrailerTrash", async function () {
 
   let nft: ScandinavianTrailerTrash;
   let accounts: SignerWithAddress[];
-  const whitelistAddress = new Array<string>();
+  // const whitelistAddress = new Array<string>();
 
   let deployer: SignerWithAddress; // owner of the Contract
   let accountX: SignerWithAddress; // any account which is not owner of the contract
@@ -38,9 +38,9 @@ describe("ScandinavianTrailerTrash", async function () {
     minter = accounts[2];
     finalCollector = accounts[9];
 
-    for (let i = 0; i < 3; i++) {
-      whitelistAddress.push(accounts[i].address);
-    }
+    // for (let i = 0; i < 3; i++) {
+    //   whitelistAddress.push(accounts[i].address);
+    // }
 
     const scandinavianTrailerTrash = await ethers.getContractFactory(
       "ScandinavianTrailerTrash"
@@ -482,4 +482,80 @@ describe("ScandinavianTrailerTrash", async function () {
   //     );
   //   });
   // });
+
+  /*********************************************************/
+  /******************     V3 test **************************/
+  /*********************************************************/
+
+  describe.only("V3 test", () => {
+    describe("default spawn", () => {
+      it("should be able to free spawn", async () => {
+        const volume = 1;
+        await nft.connect(minter).spawn(volume);
+
+        expect(await nft.balanceOf(minter.address)).to.eq(volume);
+      });
+
+      it("sholud revert on more than allowed to free spawn", async () => {
+        const volume = 2;
+        await expect(nft.connect(minter).spawn(volume)).to.revertedWith(
+          "LowPrice"
+        );
+      });
+    });
+
+    describe("update free spawn limit", () => {
+      const NEW_FREE_SPAWN_LIMIT = 5;
+      beforeEach(async () => {
+        await nft.setFreeSpawnLimit(NEW_FREE_SPAWN_LIMIT);
+      });
+
+      it("should update free spawn limit", async () => {
+        expect(await nft.freeSpawnLimit()).to.eq(NEW_FREE_SPAWN_LIMIT);
+      });
+
+      it("should not update free spawn limit for non owner wallets", async () => {
+        await expect(
+          nft.connect(accountX).setFreeSpawnLimit(5)
+        ).to.rejectedWith("Ownable: caller is not the owner");
+      });
+    });
+
+    describe("spawn limit", () => {
+      const NEW_FREE_SPAWN_LIMIT = 5;
+      beforeEach(async () => {
+        await nft.setFreeSpawnLimit(NEW_FREE_SPAWN_LIMIT);
+      });
+
+      it("should allow to spawn free NFTs to upper limit", async () => {
+        await nft.connect(minter).spawn(NEW_FREE_SPAWN_LIMIT);
+        expect(await nft.balanceOf(minter.address)).to.eq(NEW_FREE_SPAWN_LIMIT);
+      });
+
+      it("should allow to spawn free NFTs and paid NFTs to upper limit", async () => {
+        const spawnLimit = await nft.spawnLimit();
+        const spawnPrice = await nft.spawnPrice();
+
+        const weiToSend = spawnPrice.mul(spawnLimit - NEW_FREE_SPAWN_LIMIT);
+        await nft.connect(minter).spawn(spawnLimit, { value: weiToSend });
+
+        expect(await nft.balanceOf(minter.address)).to.eq(spawnLimit);
+      });
+    });
+
+    describe("spawn free NFT, update freeSpawnLimit, spawn again", () => {
+      const NEW_FREE_SPAWN_LIMIT = 5;
+      const initalSpawn = 1;
+      beforeEach(async () => {
+        await nft.connect(minter).spawn(initalSpawn);
+        await nft.setFreeSpawnLimit(NEW_FREE_SPAWN_LIMIT);
+      });
+
+      it("should be able to spawn to new upper limt", async () => {
+        await nft.connect(minter).spawn(NEW_FREE_SPAWN_LIMIT - initalSpawn);
+
+        expect(await nft.balanceOf(minter.address)).to.eq(NEW_FREE_SPAWN_LIMIT);
+      });
+    });
+  });
 });
