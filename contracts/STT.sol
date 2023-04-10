@@ -36,7 +36,7 @@ import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 /// When public spawning has not yet started
 error SpawningIsPaused();
 
-/// Zero NFTs spawn. Wallet can mint at least one NFT.
+/// Zero NFTs spawn. Wallet can spawn at least one NFT.
 error ZeroTokensSpawn();
 
 /// For price check. msg.value should be greater than or equal to spawn price
@@ -54,10 +54,6 @@ error ReservedTrashExceeded();
 /// Merkle Proof error
 error InvalidWhitelistProof();
 
-/****************************************************************/
-/***************************  ***************************/
-/****************************************************************/
-
 // =============================================================
 //       Scandinavian Trailer Trash ERC721A Contract
 // =============================================================
@@ -71,28 +67,21 @@ contract ScandinavianTrailerTrash is
     using Strings for uint256;
 
     uint16 public constant maxTrashSupply = 10000; //  _publicTrashSupply + reserveTrash = maxTrashSupply
-    uint16 private constant _publicTrashSupply = 9488; // tokens avaiable for public to mint
+    uint16 private constant _publicTrashSupply = 9488; // tokens avaiable for public to spawn
     uint16 public reserveTrash = 512; // tokens reserve for the owner
-    uint16 private _totalPublicTrash; // number of tokens minted from public supply
+    uint16 private _totalPublicTrash; // number of tokens spawn from public supply
     uint16 private _trashTax = 690; // royalties 6.9% in bps
 
     // public spwan price
-    uint256 public spawnPrice = 0.01 ether; // mint price per token
-    uint16 public spawnLimit = 10; // tokens per address are allowd to mint.
-
-    // whitelist spwan
-    uint16 public whitelistSpawnLimit = 10; // 9 tokens per address are allowd to mint (1 free).
-
+    uint256 public spawnPrice = 0.01 ether; // spawn price per token
+    uint16 public spawnLimit = 10; // tokens per address are allowd to spawn.
+    uint16 public freeSpawnLimit = 1; // free tokens per address
     bool public isSpawning;
-    bool public isWhitelistSpawning; // for whitelist minting
 
     address public trashTaxCollector; // EOA for as royalties receiver for collection
     string public baseURI; // token base uri
-    bytes32 private _merkleRoot; // merkel tree root for whitelist
 
-    mapping(address => bool) private _whitelistClaimed; // to check if wallet has minted free NFT
-    mapping(address => uint16) private _whitelistSpawnsOf; // amount of NFTs minted using `whitlistSpawn`.
-    mapping(address => uint16) private _publicSpawnsOf; // amount of NFTs minted using `spawn`.
+    mapping(address => uint16) public freeSpawnOf; // to check if wallet has spawn free NFTs
 
     // =============================================================
     //                       MODIFIERS
@@ -101,12 +90,17 @@ contract ScandinavianTrailerTrash is
     modifier spawnRequirements(uint16 volume) {
         if (!isSpawning) revert SpawningIsPaused();
         if (volume == 0) revert ZeroTokensSpawn();
-        if (msg.value < (spawnPrice * volume)) revert LowPrice();
 
-        uint16 totalSpawns = _publicSpawnsOf[_msgSender()] + volume;
+        uint16 freeSpawnOf_ = freeSpawnLimit - freeSpawnOf[_msgSender()];
+
+        freeSpawnOf[_msgSender()] += freeSpawnLimit;
+
+        if (msg.value < (spawnPrice * (volume - freeSpawnOf_)))
+            revert LowPrice();
+
+        uint256 totalSpawns = balanceOf(_msgSender()) + volume;
         if (totalSpawns > spawnLimit) revert SpawnLimitExceeded();
 
-        _publicSpawnsOf[_msgSender()] = totalSpawns;
         _;
     }
 
@@ -115,66 +109,22 @@ contract ScandinavianTrailerTrash is
     // =============================================================
 
     /**
-     * @dev  It will mint from tokens allocated for public
-     * @param volume is the quantity of tokens to be minted
+     * @dev  It will spawn from tokens allocated for public
+     * @param volume is the quantity of tokens to be spawn
      */
     function spawn(uint16 volume) external payable spawnRequirements(volume) {
         _maxSupplyCheck(volume);
-        _spawn(_msgSender(), volume);
+        _safeMint(_msgSender(), volume);
     }
 
     /**
-     * @dev  It will mint from tokens allocated for public. calling wallet should be in whitelist
-     * @param _merkleProof is markel tree hash proof for the address
-     */
-    function whitelistSpawn(
-        uint16 volume,
-        bytes32[] calldata _merkleProof
-    ) external payable {
-        if (!isWhitelistSpawning) revert SpawningIsPaused();
-        if (volume == 0) revert ZeroTokensSpawn();
-
-        bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
-        if (!MerkleProof.verify(_merkleProof, _merkleRoot, leaf))
-            revert InvalidWhitelistProof();
-
-        uint16 paidSpawn = volume;
-
-        if (!_whitelistClaimed[_msgSender()]) {
-            paidSpawn = volume - 1;
-            _maxSupplyCheck(volume);
-            _whitelistClaimed[_msgSender()] = true; // claimed free spawn
-        }
-
-        if (msg.value < (getWhitelistSpawingPrice() * paidSpawn))
-            revert LowPrice();
-
-        uint16 _newBalance = _whitelistSpawnsOf[_msgSender()] + volume;
-        if (_newBalance > whitelistSpawnLimit) revert SpawnLimitExceeded();
-
-        _whitelistSpawnsOf[_msgSender()] = _newBalance;
-
-        _maxSupplyCheck(volume);
-        _spawn(_msgSender(), volume);
-    }
-
-    /**
-     * @dev mint function only callable by the Contract owner. It will mint from reserve tokens for owner
-     * @param to is the address to which the tokens will be minted
-     * @param volume is the quantity of tokens to be minted
+     * @dev spawn function only callable by the Contract owner. It will spawn from reserve tokens for owner
+     * @param to is the address to which the tokens will be spawn
+     * @param volume is the quantity of tokens to be spawn
      */
     function spawnFromReserve(address to, uint16 volume) external onlyOwner {
         if (volume > reserveTrash) revert ReservedTrashExceeded();
         reserveTrash -= volume;
-        _spawn(to, volume);
-    }
-
-    /**
-     * @dev private function to mint given amount of tokens
-     * @param to is the address to which the tokens will be minted
-     * @param volume is the quantity of tokens to be minted
-     */
-    function _spawn(address to, uint16 volume) private {
         _safeMint(to, volume);
     }
 
@@ -192,37 +142,22 @@ contract ScandinavianTrailerTrash is
     // =============================================================
 
     /**
-     * @dev it is only callable by Contract owner. it will toggle public minting status
+     * @dev it is only callable by Contract owner. it will toggle spawn status
      */
     function toggleSpawningStatus() external onlyOwner {
         isSpawning = !isSpawning;
     }
 
     /**
-     * @dev it is only callable by Contract owner. it will whitelist minting status
-     */
-    function toggleWhitelistSpawningStatus() external onlyOwner {
-        isWhitelistSpawning = !isWhitelistSpawning;
-    }
-
-    /**
-     * @dev it will update mint price
-     * @param _spawnPrice is new value for mint
+     * @dev it will update spawn price
+     * @param _spawnPrice is new value for spawn
      */
     function setSpawnPrice(uint256 _spawnPrice) external onlyOwner {
         spawnPrice = _spawnPrice;
     }
 
     /**
-     * @dev it will update the root Hash for merkel tree (for whitelist minting)
-     * @param merkleRoot_ is the root Hash for merkel tree
-     */
-    function setMerkleRoot(bytes32 merkleRoot_) external onlyOwner {
-        _merkleRoot = merkleRoot_;
-    }
-
-    /**
-     * @dev it will update the mint limit aka amount of nfts a wallet can hold
+     * @dev it will update the spawn limit aka amount of nfts a wallet can hold
      * @param _spawnLimit is new value for the limit
      */
     function setSpawnLimit(uint16 _spawnLimit) external onlyOwner {
@@ -230,14 +165,11 @@ contract ScandinavianTrailerTrash is
     }
 
     /**
-     * @notice amount of nfts a whitelisted wallet can mint including 1 free mint.
-     * @dev it will update the whitelist paid mint limit aka amount of nfts a whitelist wallet can mint.
-     * @param _whitelistSpawnLimit is new value for the limit
+     * @dev it will update the spawn limit aka amount of nfts a wallet can hold
+     * @param _spawnLimit is new value for the limit
      */
-    function setWhitelistSpawnLimit(
-        uint16 _whitelistSpawnLimit
-    ) external onlyOwner {
-        whitelistSpawnLimit = _whitelistSpawnLimit;
+    function setFreeSpawnLimit(uint16 _spawnLimit) external onlyOwner {
+        freeSpawnLimit = _spawnLimit;
     }
 
     /**
@@ -261,11 +193,11 @@ contract ScandinavianTrailerTrash is
 
     /**
      * @dev it will update the royalties for token
-     * @param trashTax_ is new percentage of royalties. it should be more than 0 and less than 100
+     * @param trashTax_ is new percentage of royalties. it should be  in bps (1% = 1 *100 = 100). 6.9% => 6.9 * 100 = 690
      */
     function setTrashTax(uint16 trashTax_) external onlyOwner {
         require(trashTax_ > 0, "should be > 0");
-        _trashTax = (trashTax_ * 100); // convert percentage into bps
+        _trashTax = trashTax_;
     }
 
     /**
@@ -279,32 +211,6 @@ contract ScandinavianTrailerTrash is
     // =============================================================
     //                       VIEW FUNCTIONS
     // =============================================================
-
-    /**
-     * @notice returns amount of NTFs mint with public and whitelist functions
-     */
-    function getSpawns(
-        address account
-    )
-        external
-        view
-        returns (
-            uint256 publicSpawn,
-            uint256 whitelistSpwan,
-            bool whitelistClaimed
-        )
-    {
-        publicSpawn = _publicSpawnsOf[account];
-        whitelistSpwan = _whitelistSpawnsOf[account];
-        whitelistClaimed = _whitelistClaimed[account];
-    }
-
-    /**
-     * @notice returns mint price for paid whitelist NFT mint
-     */
-    function getWhitelistSpawingPrice() public view returns (uint256) {
-        return spawnPrice / 2;
-    }
 
     /**
      * @dev it will return tokenURI for given tokenIdToOwner
